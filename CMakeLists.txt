@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(TerrainGeneration)
+project(terrain_generation)
 
 # Project Standards
 set(CMAKE_CXX_STANDARD 17)
@@ -17,6 +17,22 @@ target_include_directories(glad PUBLIC ext/glad/include)
 # GLM
 add_library(glm INTERFACE)
 target_include_directories(glm INTERFACE ext/glm)
+# ImGui
+add_library(imgui STATIC
+    ext/imgui/imgui.cpp
+    ext/imgui/imgui_draw.cpp
+    ext/imgui/imgui_widgets.cpp
+    ext/imgui/imgui_tables.cpp
+    ext/imgui/imgui_demo.cpp
+    ext/imgui/backends/imgui_impl_glfw.cpp
+    ext/imgui/backends/imgui_impl_opengl3.cpp
+)
+target_include_directories(imgui PUBLIC 
+    ext/imgui 
+    ext/imgui/backends
+    ext/glad/include
+)
+target_link_libraries(imgui PRIVATE glfw)
 
 # Main Executable
 add_executable(${PROJECT_NAME} 
@@ -25,11 +41,13 @@ add_executable(${PROJECT_NAME}
 )
 
 # Linking and Includes
-target_link_libraries(${PROJECT_NAME} PRIVATE glad glfw glm dl)
+target_link_libraries(${PROJECT_NAME} PRIVATE glad glfw glm imgui dl pthread)
 target_include_directories(${PROJECT_NAME} PRIVATE 
     src 
     ext/glad/include 
     ext/glm
+    ext/imgui
+    ext/imgui/backends
 )
 
 # Asset Handling
