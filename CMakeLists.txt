@@ -37,6 +37,7 @@ target_link_libraries(imgui PRIVATE glfw)
 # Main Executable
 add_executable(${PROJECT_NAME} 
     src/main.cpp 
+    src/terrain_plane.cpp
     src/utils/shaders.cpp
 )
 
