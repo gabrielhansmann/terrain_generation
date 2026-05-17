@@ -9,7 +9,6 @@
 
 #include <iostream>
 
-#include "utils/shaders.h"
 #include "terrain_plane.h"
 
 int main() {
@@ -36,11 +35,7 @@ int main() {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330");
 
-    // Load Shaders
-    GLuint shaderProgram = LoadShaders("shaders/default.vert", "shaders/default.frag");
-
-    // Initialize plane geometry and buffers (handled in terrain_plane.*)
-    Plane_Init();
+    Plane_Init("shaders/terrain.vert", "shaders/terrain.frag");
 
     // Render Loop
     while (!glfwWindowShouldClose(window)) {
@@ -58,14 +53,11 @@ int main() {
         glClearColor(0.1f, 0.2f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // Use program and render the plane (plane module handles model matrix and draw)
-        glUseProgram(shaderProgram);
-
         glm::vec3 cameraPos(0.0f, 0.8f, 1.5f);
         glm::mat4 view = glm::lookAt(cameraPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
-        Plane_Render(shaderProgram, view, projection, cameraPos);
+        Plane_Render(view, projection, cameraPos);
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -75,7 +67,6 @@ int main() {
 
     // Cleanup
     Plane_Cleanup();
-    glDeleteProgram(shaderProgram);
 
     glfwTerminate();
     return 0;
