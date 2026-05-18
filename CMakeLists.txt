@@ -39,6 +39,8 @@ add_executable(${PROJECT_NAME}
     src/main.cpp 
     src/terrain_plane.cpp
     src/utils/shaders.cpp
+	src/perlin_noise.cpp
+	src/heightmap.cpp
 )
 
 # Linking and Includes
