@@ -59,6 +59,10 @@ int main() {
 
         Plane_Render(view, projection, cameraPos);
 
+        if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+            glfwSetWindowShouldClose(window, true);
+        }
+
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
