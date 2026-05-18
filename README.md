@@ -20,10 +20,10 @@ unzip ext/glad/glad.zip
 ```
 
 ### Build
-Build the project in a specified `build` directory
+Configure and build the project in a specified `build` directory, export compile commands for clangd to find OpenGL correctly:
 ```bash
 mkdir build
 cd build
-cmake ..
+cmake .. -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 make
 ```
