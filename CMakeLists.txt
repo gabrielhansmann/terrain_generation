@@ -37,8 +37,9 @@ target_link_libraries(imgui PRIVATE glfw)
 # Main Executable
 add_executable(${PROJECT_NAME} 
     src/main.cpp 
-    src/terrain_plane.cpp
+    src/utils/camera.cpp
     src/utils/shaders.cpp
+    src/terrain_plane.cpp
 	src/perlin_noise.cpp
 	src/heightmap.cpp
 )
