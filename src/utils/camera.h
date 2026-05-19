@@ -4,21 +4,37 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 
-// Initialize camera with the GLFW window (required for input)
-void Camera_Init(GLFWwindow* window);
+class Camera {
+public:
+	explicit Camera(GLFWwindow* window);
+	~Camera();
 
-// Per-frame update (call with delta time seconds)
-// Controls: WASD for movement, Space/Shift for up/down, mouse for looking around
-void Camera_Update(float deltaTime);
+	Camera(const Camera&) = delete;
+	Camera& operator=(const Camera&) = delete;
 
-// Get the current camera position
-glm::vec3 Camera_GetPosition();
+	void update(float deltaTime);
 
-// Get the current camera view matrix
-glm::mat4 Camera_GetViewMatrix();
+	glm::vec3 position() const;
+	glm::mat4 viewMatrix() const;
+	glm::mat4 projectionMatrix() const;
 
-// Get the current camera projection matrix
-glm::mat4 Camera_GetProjectionMatrix();
+private:
+	void updateVectors();
 
-// Cleanup camera resources
-void Camera_Cleanup();
+	GLFWwindow* m_window = nullptr;
+	glm::vec3 m_position;
+	glm::vec3 m_front;
+	glm::vec3 m_up;
+	glm::vec3 m_right;
+	glm::vec3 m_worldUp;
+	float m_yaw;
+	float m_pitch;
+	float m_speed;
+	float m_sensitivity;
+	float m_fov;
+	double m_lastX;
+	double m_lastY;
+	bool m_firstMouse;
+	int m_width;
+	int m_height;
+};

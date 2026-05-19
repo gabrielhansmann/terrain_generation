@@ -3,10 +3,6 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-
 #include <iostream>
 
 #include "utils/camera.h"
@@ -36,9 +32,8 @@ int main() {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330");
 
-    Camera_Init(window);
-
-    Plane_Init("shaders/terrain.vert", "shaders/terrain.frag");
+    Camera camera(window);
+    TerrainPlane plane("shaders/terrain.vert", "shaders/terrain.frag"); 
 
     // Render Loop
     while (!glfwWindowShouldClose(window)) {
@@ -61,12 +56,12 @@ int main() {
         float deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        Camera_Update(deltaTime);
-        glm::vec3 cameraPos = Camera_GetPosition();
-        glm::mat4 view = Camera_GetViewMatrix();
-        glm::mat4 projection = Camera_GetProjectionMatrix();
+        camera.update(deltaTime);
+        glm::vec3 cameraPos = camera.position();
+        glm::mat4 view = camera.viewMatrix();
+        glm::mat4 projection = camera.projectionMatrix();
 
-        Plane_Render(view, projection, cameraPos);
+        plane.render(view, projection, cameraPos);
 
         if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
             glfwSetWindowShouldClose(window, true);
@@ -79,9 +74,6 @@ int main() {
     }
 
     // Cleanup
-    Camera_Cleanup();
-    Plane_Cleanup();
-
     glfwTerminate();
     return 0;
 }

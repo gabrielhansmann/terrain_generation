@@ -1,105 +1,96 @@
 #include "camera.h"
 
 #include <glm/gtc/matrix_transform.hpp>
-#include <iostream>
 
-static GLFWwindow* s_window = nullptr;
-
-static glm::vec3 s_Position(0.0f, 0.8f, 1.5f);
-static glm::vec3 s_Front(0.0f, 0.0f, -1.0f);
-static glm::vec3 s_Up(0.0f, 1.0f, 0.0f);
-static glm::vec3 s_Right(1.0f, 0.0f, 0.0f);
-static glm::vec3 s_WorldUp(0.0f, 1.0f, 0.0f);
-
-static float s_Yaw = -90.0f;
-static float s_Pitch = 0.0f;
-static float s_Speed = 3.0f;
-static float s_Sensitivity = 0.12f;
-static float s_Fov = 45.0f;
-
-static double s_LastX = 0.0, s_LastY = 0.0;
-static bool s_FirstMouse = true;
-
-static int s_Width = 800, s_Height = 600;
-
-void updateCameraVectors() {
-    glm::vec3 front;
-    front.x = cos(glm::radians(s_Yaw)) * cos(glm::radians(s_Pitch));
-    front.y = sin(glm::radians(s_Pitch));
-    front.z = sin(glm::radians(s_Yaw)) * cos(glm::radians(s_Pitch));
-    s_Front = glm::normalize(front);
-    s_Right = glm::normalize(glm::cross(s_Front, s_WorldUp));
-    s_Up = glm::normalize(glm::cross(s_Right, s_Front));
-}
-
-void Camera_Init(GLFWwindow* window) {
-    s_window = window;
-    if (!s_window) return;
-    glfwGetFramebufferSize(s_window, &s_Width, &s_Height);
-    s_LastX = s_Width * 0.5;
-    s_LastY = s_Height * 0.5;
-    s_FirstMouse = true;
-    updateCameraVectors();
-    // Capture the cursor for rotation
-    glfwSetInputMode(s_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-}
-
-void Camera_Update(float deltaTime) {
-    if (!s_window) return;
-
-    // Keyboard movement
-    float velocity = s_Speed * deltaTime;
-    if (glfwGetKey(s_window, GLFW_KEY_W) == GLFW_PRESS)
-        s_Position += s_Front * velocity;
-    if (glfwGetKey(s_window, GLFW_KEY_S) == GLFW_PRESS)
-        s_Position -= s_Front * velocity;
-    if (glfwGetKey(s_window, GLFW_KEY_A) == GLFW_PRESS)
-        s_Position -= s_Right * velocity;
-    if (glfwGetKey(s_window, GLFW_KEY_D) == GLFW_PRESS)
-        s_Position += s_Right * velocity;
-    if (glfwGetKey(s_window, GLFW_KEY_SPACE) == GLFW_PRESS)
-        s_Position += s_WorldUp * velocity;
-    if (glfwGetKey(s_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-        s_Position -= s_WorldUp * velocity;
-
-    // Mouse rotation
-    double xpos, ypos;
-    glfwGetCursorPos(s_window, &xpos, &ypos);
-    if (s_FirstMouse) {
-        s_LastX = xpos;
-        s_LastY = ypos;
-        s_FirstMouse = false;
+Camera::Camera(GLFWwindow* window)
+    : m_window(window),
+      m_position(0.0f, 0.8f, 1.5f),
+      m_front(0.0f, 0.0f, -1.0f),
+      m_up(0.0f, 1.0f, 0.0f),
+      m_right(1.0f, 0.0f, 0.0f),
+      m_worldUp(0.0f, 1.0f, 0.0f),
+      m_yaw(-90.0f),
+      m_pitch(0.0f),
+      m_speed(3.0f),
+      m_sensitivity(0.12f),
+      m_fov(45.0f),
+      m_lastX(0.0),
+      m_lastY(0.0),
+      m_firstMouse(true),
+      m_width(800),
+      m_height(600) {
+    if (m_window) {
+        glfwGetFramebufferSize(m_window, &m_width, &m_height);
+        m_lastX = m_width * 0.5;
+        m_lastY = m_height * 0.5;
+        updateVectors();
+        glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     }
-    float xoffset = float(xpos - s_LastX);
-    float yoffset = float(s_LastY - ypos); // reversed: y ranges bottom->top
-    s_LastX = xpos;
-    s_LastY = ypos;
-
-    xoffset *= s_Sensitivity;
-    yoffset *= s_Sensitivity;
-
-    s_Yaw += xoffset;
-    s_Pitch += yoffset;
-    if (s_Pitch > 89.0f) s_Pitch = 89.0f;
-    if (s_Pitch < -89.0f) s_Pitch = -89.0f;
-    updateCameraVectors();
-
-    // keep projection updated in case of resize
-    glfwGetFramebufferSize(s_window, &s_Width, &s_Height);
 }
 
-glm::vec3 Camera_GetPosition() { return s_Position; }
-
-glm::mat4 Camera_GetViewMatrix() {
-    return glm::lookAt(s_Position, s_Position + s_Front, s_Up);
+Camera::~Camera() {
+    if (m_window) {
+        glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    }
 }
 
-glm::mat4 Camera_GetProjectionMatrix() {
-    float aspect = s_Width > 0 && s_Height > 0 ? (float)s_Width / (float)s_Height : 4.0f/3.0f;
-    return glm::perspective(glm::radians(s_Fov), aspect, 0.1f, 100.0f);
+void Camera::updateVectors() {
+    glm::vec3 front;
+    front.x = cos(glm::radians(m_yaw)) * cos(glm::radians(m_pitch));
+    front.y = sin(glm::radians(m_pitch));
+    front.z = sin(glm::radians(m_yaw)) * cos(glm::radians(m_pitch));
+
+    m_front = glm::normalize(front);
+    m_right = glm::normalize(glm::cross(m_front, m_worldUp));
+    m_up = glm::normalize(glm::cross(m_right, m_front));
 }
 
-void Camera_Cleanup() {
-    if (s_window) glfwSetInputMode(s_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-    s_window = nullptr;
+void Camera::update(float deltaTime) {
+    if (!m_window) return;
+
+    float velocity = m_speed * deltaTime;
+    if (glfwGetKey(m_window, GLFW_KEY_W) == GLFW_PRESS) m_position += m_front * velocity;
+    if (glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS) m_position -= m_front * velocity;
+    if (glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS) m_position -= m_right * velocity;
+    if (glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS) m_position += m_right * velocity;
+    if (glfwGetKey(m_window, GLFW_KEY_SPACE) == GLFW_PRESS) m_position += m_worldUp * velocity;
+    if (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) m_position -= m_worldUp * velocity;
+
+    double xpos = 0.0;
+    double ypos = 0.0;
+    glfwGetCursorPos(m_window, &xpos, &ypos);
+    if (m_firstMouse) {
+        m_lastX = xpos;
+        m_lastY = ypos;
+        m_firstMouse = false;
+    }
+
+    float xoffset = static_cast<float>(xpos - m_lastX);
+    float yoffset = static_cast<float>(m_lastY - ypos);
+    m_lastX = xpos;
+    m_lastY = ypos;
+
+    xoffset *= m_sensitivity;
+    yoffset *= m_sensitivity;
+
+    m_yaw += xoffset;
+    m_pitch += yoffset;
+    if (m_pitch > 89.0f) m_pitch = 89.0f;
+    if (m_pitch < -89.0f) m_pitch = -89.0f;
+
+    updateVectors();
+    glfwGetFramebufferSize(m_window, &m_width, &m_height);
+}
+
+glm::vec3 Camera::position() const {
+    return m_position;
+}
+
+glm::mat4 Camera::viewMatrix() const {
+    return glm::lookAt(m_position, m_position + m_front, m_up);
+}
+
+glm::mat4 Camera::projectionMatrix() const {
+    float aspect = m_width > 0 && m_height > 0 ? static_cast<float>(m_width) / static_cast<float>(m_height) : 4.0f / 3.0f;
+    return glm::perspective(glm::radians(m_fov), aspect, 0.1f, 100.0f);
 }
