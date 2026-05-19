@@ -2,6 +2,14 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+namespace {
+float clampValue(float value, float minValue, float maxValue) {
+    if (value < minValue) return minValue;
+    if (value > maxValue) return maxValue;
+    return value;
+}
+}
+
 Camera::Camera(GLFWwindow* window)
     : m_window(window),
       m_position(0.0f, 0.8f, 1.5f),
@@ -17,8 +25,8 @@ Camera::Camera(GLFWwindow* window)
       m_lastX(0.0),
       m_lastY(0.0),
       m_firstMouse(true),
-            m_controlsEnabled(true),
-            m_toggleKeyWasDown(false),
+    m_controlsEnabled(true),
+    m_toggleKeyWasDown(false),
       m_width(800),
       m_height(600) {
     if (m_window) {
@@ -45,6 +53,18 @@ void Camera::updateVectors() {
     m_front = glm::normalize(front);
     m_right = glm::normalize(glm::cross(m_front, m_worldUp));
     m_up = glm::normalize(glm::cross(m_right, m_front));
+}
+
+void Camera::setMovementSpeed(float speed) {
+    m_speed = clampValue(speed, 0.1f, 100.0f);
+}
+
+void Camera::setMouseSensitivity(float sensitivity) {
+    m_sensitivity = clampValue(sensitivity, 0.001f, 10.0f);
+}
+
+void Camera::setFieldOfView(float fov) {
+    m_fov = clampValue(fov, 1.0f, 120.0f);
 }
 
 void Camera::update(float deltaTime) {
@@ -99,6 +119,18 @@ void Camera::update(float deltaTime) {
 
 glm::vec3 Camera::position() const {
     return m_position;
+}
+
+float Camera::movementSpeed() const {
+    return m_speed;
+}
+
+float Camera::mouseSensitivity() const {
+    return m_sensitivity;
+}
+
+float Camera::fieldOfView() const {
+    return m_fov;
 }
 
 glm::mat4 Camera::viewMatrix() const {

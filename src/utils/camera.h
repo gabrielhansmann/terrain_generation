@@ -13,9 +13,15 @@ public:
 	Camera& operator=(const Camera&) = delete;
 
 	void update(float deltaTime);
+	void setMovementSpeed(float speed);
+	void setMouseSensitivity(float sensitivity);
+	void setFieldOfView(float fov);
 	void setControlsEnabled(bool enabled);
 
 	glm::vec3 position() const;
+	float movementSpeed() const;
+	float mouseSensitivity() const;
+	float fieldOfView() const;
 	glm::mat4 viewMatrix() const;
 	glm::mat4 projectionMatrix() const;
 	bool controlsEnabled() const;
