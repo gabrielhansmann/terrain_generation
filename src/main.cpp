@@ -45,6 +45,11 @@ int main() {
 
         ImGui::Begin("Options Menu");
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+        bool cameraControlsEnabled = camera.controlsEnabled();
+        if (ImGui::Checkbox("Camera Movement", &cameraControlsEnabled)) {
+            camera.setControlsEnabled(cameraControlsEnabled);
+        }
+        ImGui::Text("Press C to toggle camera controls");
         ImGui::End();
 
         glEnable(GL_DEPTH_TEST);

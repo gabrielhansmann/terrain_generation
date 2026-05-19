@@ -13,10 +13,12 @@ public:
 	Camera& operator=(const Camera&) = delete;
 
 	void update(float deltaTime);
+	void setControlsEnabled(bool enabled);
 
 	glm::vec3 position() const;
 	glm::mat4 viewMatrix() const;
 	glm::mat4 projectionMatrix() const;
+	bool controlsEnabled() const;
 
 private:
 	void updateVectors();
@@ -35,6 +37,8 @@ private:
 	double m_lastX;
 	double m_lastY;
 	bool m_firstMouse;
+	bool m_controlsEnabled;
+	bool m_toggleKeyWasDown;
 	int m_width;
 	int m_height;
 };
