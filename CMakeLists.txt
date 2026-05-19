@@ -39,6 +39,7 @@ add_executable(${PROJECT_NAME}
     src/main.cpp 
     src/utils/camera.cpp
     src/utils/shaders.cpp
+    src/options_menu.cpp
     src/terrain_plane.cpp
 	src/perlin_noise.cpp
 	src/heightmap.cpp

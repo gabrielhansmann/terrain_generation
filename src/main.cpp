@@ -6,6 +6,7 @@
 #include <iostream>
 
 #include "utils/camera.h"
+#include "options_menu.h"
 #include "terrain_plane.h"
 
 static void framebufferSizeCallback(GLFWwindow*, int width, int height) {
@@ -54,14 +55,7 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        ImGui::Begin("Options Menu");
-        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-        bool cameraControlsEnabled = camera.controlsEnabled();
-        if (ImGui::Checkbox("Camera Movement", &cameraControlsEnabled)) {
-            camera.setControlsEnabled(cameraControlsEnabled);
-        }
-        ImGui::Text("Press C to toggle camera controls");
-        ImGui::End();
+        renderOptionsMenu(camera);
 
         glEnable(GL_DEPTH_TEST);
         glClearColor(0.1f, 0.2f, 0.3f, 1.0f);
