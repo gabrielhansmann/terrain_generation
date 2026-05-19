@@ -35,13 +35,10 @@ target_include_directories(imgui PUBLIC
 target_link_libraries(imgui PRIVATE glfw)
 
 # Main Executable
-add_executable(${PROJECT_NAME} 
-    src/main.cpp 
-    src/utils/camera.cpp
+add_executable(${PROJECT_NAME}
+    src/main.cpp
     src/utils/shaders.cpp
-    src/terrain_plane.cpp
-	src/perlin_noise.cpp
-	src/heightmap.cpp
+    src/perlin_noise.cpp
 )
 
 # Linking and Includes
