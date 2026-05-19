@@ -1,5 +1,4 @@
-#ifndef TERRAIN_PLANE_H
-#define TERRAIN_PLANE_H
+#pragma once
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>
@@ -16,5 +15,3 @@ void Plane_Render(const glm::mat4& view, const glm::mat4& projection, const glm:
 
 // Cleanup GPU resources used by the plane
 void Plane_Cleanup();
-
-#endif
