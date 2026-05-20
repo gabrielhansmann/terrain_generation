@@ -39,6 +39,7 @@ add_executable(${PROJECT_NAME}
     src/main.cpp
     src/utils/shaders.cpp
     src/perlin_noise.cpp
+	src/compute_pass.cpp
 )
 
 # Linking and Includes

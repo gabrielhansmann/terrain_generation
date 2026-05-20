@@ -7,6 +7,7 @@
 #include <vector>
 #include "utils/shaders.h"
 #include "perlin_noise.h"
+#include "compute_pass.h"
 
 static int SCREEN_W = 1920, SCREEN_H = 1080;
 static float mouseX = 0, mouseY = 0;
@@ -68,7 +69,6 @@ int main() {
 	GLuint vao;
 	glGenVertexArrays(1, &vao);
 	GLuint progB = LoadShaders("shaders/fullscreen.vert", "shaders/buffer_b.frag");
-	GLuint progA = LoadShaders("shaders/fullscreen.vert", "shaders/buffer_a.frag");
 	GLuint progImg = LoadShaders("shaders/fullscreen.vert", "shaders/terrain_flat.frag");
 
 	// Buffer A/B FBOs match the window size — the Shadertoy convention. The
@@ -76,19 +76,14 @@ int main() {
 	// to a square sub-region via DISCARD_MAP, and the image samples exactly
 	// that region with `uv *= BUFFER_SIZE / iResolution.xy`.
 	int FBO_W = SCREEN_W, FBO_H = SCREEN_H;
-	GLuint texA, texB, fboA, fboB;
-	fboA = makeFBO(FBO_W, FBO_H, texA);
+	GLuint texB, fboB;
 	fboB = makeFBO(FBO_W, FBO_H, texB);
+
+	// erosion pass
+	ComputePass erosionPass(1080, 1080, "shaders/erosion.comp");
 
 	// Stand-in for the Shadertoy keyboard texture on Buffer A's iChannel1.
 	// Prevents that sampler from aliasing texA via texture unit 0.
-	GLuint texZero;
-	glGenTextures(1, &texZero);
-	glBindTexture(GL_TEXTURE_2D, texZero);
-	float zeroPixel[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 1, 1, 0, GL_RGBA, GL_FLOAT, zeroPixel);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 	// Dither noise for image iChannel2 (color += texture(..).xxx / 255.0).
 	const int DITHER_SIZE = 256;
@@ -125,13 +120,10 @@ int main() {
 
 		// Resize the heightmap / detail FBOs to follow the window.
 		if (SCREEN_W != FBO_W || SCREEN_H != FBO_H) {
-			glDeleteTextures(1, &texA);
 			glDeleteTextures(1, &texB);
-			glDeleteFramebuffers(1, &fboA);
 			glDeleteFramebuffers(1, &fboB);
 			FBO_W = SCREEN_W;
 			FBO_H = SCREEN_H;
-			fboA = makeFBO(FBO_W, FBO_H, texA);
 			fboB = makeFBO(FBO_W, FBO_H, texB);
 		}
 
@@ -146,16 +138,7 @@ int main() {
 		drawFullscreen();
 
 		// Pass 1b - Buffer A (erosion heightmap)
-		glBindFramebuffer(GL_FRAMEBUFFER, fboA);
-		glViewport(0, 0, FBO_W, FBO_H);
-		glUseProgram(progA);
-		glUniform3f(glGetUniformLocation(progA, "iResolution"), (float)FBO_W, (float)FBO_H, 1.0f);
-		glUniform1f(glGetUniformLocation(progA, "iTime"), t);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, texZero);
-		glUniform1i(glGetUniformLocation(progA, "iChannel1"), 0);
-		glBindVertexArray(vao);
-		drawFullscreen();
+		erosionPass.dispatch();
 
 		// Pass 2 - Image renders straight to the default framebuffer at the
 		// full window size; iResolution matches so the camera centres correctly.
@@ -168,7 +151,7 @@ int main() {
 		glUniform4f(glGetUniformLocation(progImg, "iMouse"), mouseX, (float)SCREEN_H - mouseY, mouseDown ? 1.0f : 0.0f, 0.0f);
 
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, texA);
+		glBindTexture(GL_TEXTURE_2D, erosionPass.texture());
 		glUniform1i(glGetUniformLocation(progImg, "iChannel0"), 0);
 
 		glActiveTexture(GL_TEXTURE1);
@@ -182,8 +165,8 @@ int main() {
 		// Upload all 4 iChannelResolution slots — drivers can strip unreferenced
 		// indices, so querying [2] alone sometimes returns -1.
 		float ichRes[12] = {
-			(float)FBO_W, (float)FBO_H, 1.0f,
-			(float)FBO_W, (float)FBO_H, 1.0f,
+			1080.0f, 1080.0f, 1.0f, // iChannel0: erosion heightmap (fixed size)
+			(float)FBO_W, (float)FBO_H, 1.0f, //iChannel1: detail noise (window-sized)
 			(float)DITHER_SIZE, (float)DITHER_SIZE, 1.0f,
 			1.0f, 1.0f, 1.0f,
 		};

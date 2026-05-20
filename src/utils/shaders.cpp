@@ -73,3 +73,23 @@ GLuint LoadShaders(const char* vertPath, const char* fragPath) {
 	return program;
 
 }
+
+GLuint LoadComputeShader(const char* computePath) {
+	std::string src = resolveIncludes(readFile(computePath), "shaders");
+	GLuint comp = compileShader(GL_COMPUTE_SHADER, src, computePath);
+
+	GLuint program = glCreateProgram();
+	glAttachShader(program, comp);
+	glLinkProgram(program);
+
+	GLint ok;
+	glGetProgramiv(program, GL_LINK_STATUS, &ok);
+	if (!ok) {
+		char log[1024];
+		glGetProgramInfoLog(program, 1024, nullptr, log);
+		std::cerr << "ERROR:SHADER::LINK [" << computePath<< "]\n" << log << "\n";
+	}
+
+	glDeleteShader(comp);
+	return program;
+}

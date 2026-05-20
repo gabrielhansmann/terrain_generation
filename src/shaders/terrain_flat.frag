@@ -47,7 +47,12 @@ A few of the changes implemented:
 // Get the map channels from Buffer A, except the packed data.
 // This is cheaper for usages that don't need the packed data anyway.
 vec3 GetChannel0(vec2 uv) {
-    uv *= BUFFER_SIZE / iResolution.xy;
+	// iChannel0 was window-sized FBO with data only in BUFFER_SIZE
+	// sub region so the scale was BUFFER_SIZE/iResolution (e.g. 1080/1920 = 0.5625)
+    // compute heightmap is exactly BUFFER_SIZE x BUFFER_SIZE, so iChannelResolution[0]
+    // gives a scale of 1.0 — sampling the full texture. Using iResolution here would
+    // silently read only the left 56% of the heightmap and throw away the rest
+    uv *= BUFFER_SIZE / iChannelResolution[0].xy;
     return texture(iChannel0, uv).xyz;
 }
 
