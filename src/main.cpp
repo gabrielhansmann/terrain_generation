@@ -18,23 +18,6 @@ static void mouseButtonCB(GLFWwindow*, int btn, int action, int) {
 		mouseDown = (action == GLFW_PRESS);
 }
 
-static GLuint makeFBO(int w, int h, GLuint& tex) {
-	glGenTextures(1, &tex);
-	glBindTexture(GL_TEXTURE_2D, tex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, w, h, 0, GL_RGBA, GL_FLOAT, nullptr);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-	GLuint fbo;
-	glGenFramebuffers(1, &fbo);
-	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	return fbo;
-}
-
 static void drawFullscreen() {
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 }
@@ -68,22 +51,14 @@ int main() {
 	// Dummy VAO - fullscreen.vert uses gl_VertexID, needs no VBO
 	GLuint vao;
 	glGenVertexArrays(1, &vao);
-	GLuint progB = LoadShaders("shaders/fullscreen.vert", "shaders/buffer_b.frag");
 	GLuint progImg = LoadShaders("shaders/fullscreen.vert", "shaders/terrain_flat.frag");
 
-	// Buffer A/B FBOs match the window size — the Shadertoy convention. The
-	// shader's `BUFFER_SIZE = min(iRes.x, iRes.y, 1080)` then limits real work
-	// to a square sub-region via DISCARD_MAP, and the image samples exactly
-	// that region with `uv *= BUFFER_SIZE / iResolution.xy`.
-	int FBO_W = SCREEN_W, FBO_H = SCREEN_H;
-	GLuint texB, fboB;
-	fboB = makeFBO(FBO_W, FBO_H, texB);
 
 	// erosion pass
 	ComputePass erosionPass(1080, 1080, "shaders/erosion.comp");
 
-	// Stand-in for the Shadertoy keyboard texture on Buffer A's iChannel1.
-	// Prevents that sampler from aliasing texA via texture unit 0.
+	// detail pass
+	ComputePass detailPass(1080, 1080, "shaders/detail.comp");
 
 	// Dither noise for image iChannel2 (color += texture(..).xxx / 255.0).
 	const int DITHER_SIZE = 256;
@@ -118,26 +93,7 @@ int main() {
 		float t = (float)glfwGetTime() + 3600.0f;
 		glfwGetFramebufferSize(window, &SCREEN_W, &SCREEN_H);
 
-		// Resize the heightmap / detail FBOs to follow the window.
-		if (SCREEN_W != FBO_W || SCREEN_H != FBO_H) {
-			glDeleteTextures(1, &texB);
-			glDeleteFramebuffers(1, &fboB);
-			FBO_W = SCREEN_W;
-			FBO_H = SCREEN_H;
-			fboB = makeFBO(FBO_W, FBO_H, texB);
-		}
-
-		// Pass 1a - Buffer B (detail noise). Re-rendered each frame so its
-		// TIME_SCROLL_OFFSET_INT advances in lockstep with Buffer A.
-		glBindFramebuffer(GL_FRAMEBUFFER, fboB);
-		glViewport(0, 0, FBO_W, FBO_H);
-		glUseProgram(progB);
-		glUniform3f(glGetUniformLocation(progB, "iResolution"), (float)FBO_W, (float)FBO_H, 1.0f);
-		glUniform1f(glGetUniformLocation(progB, "iTime"), t);
-		glBindVertexArray(vao);
-		drawFullscreen();
-
-		// Pass 1b - Buffer A (erosion heightmap)
+		detailPass.dispatch();
 		erosionPass.dispatch();
 
 		// Pass 2 - Image renders straight to the default framebuffer at the
@@ -155,7 +111,7 @@ int main() {
 		glUniform1i(glGetUniformLocation(progImg, "iChannel0"), 0);
 
 		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, texB);
+		glBindTexture(GL_TEXTURE_2D, detailPass.texture());
 		glUniform1i(glGetUniformLocation(progImg, "iChannel1"), 1);
 
 		glActiveTexture(GL_TEXTURE2);
@@ -166,7 +122,7 @@ int main() {
 		// indices, so querying [2] alone sometimes returns -1.
 		float ichRes[12] = {
 			1080.0f, 1080.0f, 1.0f, // iChannel0: erosion heightmap (fixed size)
-			(float)FBO_W, (float)FBO_H, 1.0f, //iChannel1: detail noise (window-sized)
+			1080.0f, 1080.0f, 1.0f, //iChannel1: detail noise (window-sized)
 			(float)DITHER_SIZE, (float)DITHER_SIZE, 1.0f,
 			1.0f, 1.0f, 1.0f,
 		};

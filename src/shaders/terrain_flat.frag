@@ -94,7 +94,6 @@ vec2 GetUV(vec3 p) {
     vec2 pixel = vec2(1.0) / BUFFER_SIZE;
     vec2 uv = p.xz * (1.0 - pixel * 2.0) + vec2(0.5);
     uv = clamp(uv, pixel, vec2(1.0) - pixel);
-    uv += TIME_SCROLL_OFFSET_FRAC;
     return uv;
 }
 
@@ -476,7 +475,6 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         int view = int(uv.y);
         uv.y = fract(uv.y);
         if (uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0) {
-            uv += TIME_SCROLL_OFFSET_FRAC;
             float erosion;
             float ridgemap;
             float trees;
