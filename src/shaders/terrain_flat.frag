@@ -58,7 +58,7 @@ vec3 GetChannel0(vec2 uv) {
 
 // Get detail texture from Buffer B.
 vec4 GetChannel1(vec2 uv) {
-    uv *= BUFFER_SIZE / iResolution.xy;
+    uv *= BUFFER_SIZE / iChannelResolution[1].xy;
     return texture(iChannel1, uv);
 }
 
