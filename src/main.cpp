@@ -8,8 +8,9 @@
 #include "utils/shaders.h"
 #include "perlin_noise.h"
 #include "compute_pass.h"
+#include "framebuffer.h"
 
-static int SCREEN_W = 1920, SCREEN_H = 1080;
+static int SCREEN_W = 960, SCREEN_H = 540;
 static float mouseX = 0, mouseY = 0;
 static bool mouseDown = false;
 
@@ -28,6 +29,7 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
     GLFWwindow* window = glfwCreateWindow(SCREEN_W, SCREEN_H, "Terrain Generation", nullptr, nullptr);
     if (!window) {
@@ -51,14 +53,17 @@ int main() {
 	// Dummy VAO - fullscreen.vert uses gl_VertexID, needs no VBO
 	GLuint vao;
 	glGenVertexArrays(1, &vao);
-	GLuint progImg = LoadShaders("shaders/fullscreen.vert", "shaders/terrain_flat.frag");
-
+	GLuint progGBuffer = LoadShaders("shaders/fullscreen.vert", "shaders/gbuffer.frag");
+	GLuint progLighting = LoadShaders("shaders/fullscreen.vert", "shaders/lighting.frag");
 
 	// erosion pass
 	ComputePass erosionPass(1080, 1080, "shaders/erosion.comp");
 
 	// detail pass
 	ComputePass detailPass(1080, 1080, "shaders/detail.comp");
+
+	//	G-buffer
+	Framebuffer gbuffer(SCREEN_W, SCREEN_H, 4);
 
 	// Dither noise for image iChannel2 (color += texture(..).xxx / 255.0).
 	const int DITHER_SIZE = 256;
@@ -92,41 +97,81 @@ int main() {
 
 		float t = (float)glfwGetTime() + 3600.0f;
 		glfwGetFramebufferSize(window, &SCREEN_W, &SCREEN_H);
+		gbuffer.resize(SCREEN_W, SCREEN_H);
 
 		detailPass.dispatch();
 		erosionPass.dispatch();
 
-		// Pass 2 - Image renders straight to the default framebuffer at the
-		// full window size; iResolution matches so the camera centres correctly.
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		// Pass 1 - G-buffer: march + material -> 4 render targets 
+		gbuffer.bind();
 		glViewport(0, 0, SCREEN_W, SCREEN_H);
 		glClear(GL_COLOR_BUFFER_BIT);
-		glUseProgram(progImg);
-		glUniform3f(glGetUniformLocation(progImg, "iResolution"), (float)SCREEN_W, (float)SCREEN_H, 1.0f);
-		glUniform1f(glGetUniformLocation(progImg, "iTime"), t);
-		glUniform4f(glGetUniformLocation(progImg, "iMouse"), mouseX, (float)SCREEN_H - mouseY, mouseDown ? 1.0f : 0.0f, 0.0f);
+		glUseProgram(progGBuffer);
+		glUniform3f(glGetUniformLocation(progGBuffer, "iResolution"), (float)SCREEN_W, (float)SCREEN_H, 1.0f);
+		glUniform1f(glGetUniformLocation(progGBuffer, "iTime"), t);
+		glUniform4f(glGetUniformLocation(progGBuffer, "iMouse"), mouseX, (float)SCREEN_H - mouseY, mouseDown ? 1.0f : 0.0f, 0.0f);
 
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, erosionPass.texture());
-		glUniform1i(glGetUniformLocation(progImg, "iChannel0"), 0);
+		glUniform1i(glGetUniformLocation(progGBuffer, "iChannel0"), 0);
 
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, detailPass.texture());
-		glUniform1i(glGetUniformLocation(progImg, "iChannel1"), 1);
+		glUniform1i(glGetUniformLocation(progGBuffer, "iChannel1"), 1);
 
 		glActiveTexture(GL_TEXTURE2);
 		glBindTexture(GL_TEXTURE_2D, texDither);
-		glUniform1i(glGetUniformLocation(progImg, "iChannel2"), 2);
+		glUniform1i(glGetUniformLocation(progGBuffer, "iChannel2"), 2);
 
-		// Upload all 4 iChannelResolution slots — drivers can strip unreferenced
-		// indices, so querying [2] alone sometimes returns -1.
 		float ichRes[12] = {
 			1080.0f, 1080.0f, 1.0f, // iChannel0: erosion heightmap (fixed size)
 			1080.0f, 1080.0f, 1.0f, //iChannel1: detail noise (window-sized)
 			(float)DITHER_SIZE, (float)DITHER_SIZE, 1.0f,
 			1.0f, 1.0f, 1.0f,
 		};
-		glUniform3fv(glGetUniformLocation(progImg, "iChannelResolution[0]"), 4, ichRes);
+		glUniform3fv(glGetUniformLocation(progGBuffer, "iChannelResolution[0]"), 4, ichRes);
+
+		glBindVertexArray(vao);
+		drawFullscreen();
+		gbuffer.unbind();
+
+		// Pass 2 - Lighting: reads G-buffer, runs BRDF + shadow + athmosphere -> screen
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glViewport(0, 0, SCREEN_W, SCREEN_H);
+		glClear(GL_COLOR_BUFFER_BIT);
+		glUseProgram(progLighting);
+
+		glUniform3f(glGetUniformLocation(progLighting, "iResolution"), (float)SCREEN_W, (float)SCREEN_H, 1.0f);
+		glUniform1f(glGetUniformLocation(progLighting, "iTime"), t);
+		glUniform4f(glGetUniformLocation(progLighting, "iMouse"), mouseX, (float)SCREEN_H - mouseY, mouseDown ? 1.0f : 0.0f, 0.0f);
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, gbuffer.texture(0));
+		glUniform1i(glGetUniformLocation(progLighting, "gAlbedoOcclusion"), 0);
+
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, gbuffer.texture(1));
+		glUniform1i(glGetUniformLocation(progLighting, "gNormalMaterial"), 1);
+
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, gbuffer.texture(2));
+		glUniform1i(glGetUniformLocation(progLighting, "gF0Smoothness"), 2);
+
+		glActiveTexture(GL_TEXTURE3);
+		glBindTexture(GL_TEXTURE_2D, gbuffer.texture(3));
+		glUniform1i(glGetUniformLocation(progLighting, "gDepth"), 3);
+
+		// heightmap for shadow and reflection marches
+		glActiveTexture(GL_TEXTURE4);
+		glBindTexture(GL_TEXTURE_2D, erosionPass.texture());
+		glUniform1i(glGetUniformLocation(progLighting, "iChannel0"), 4);
+
+		// dither
+		glActiveTexture(GL_TEXTURE5);
+		glBindTexture(GL_TEXTURE_2D, texDither);
+		glUniform1i(glGetUniformLocation(progLighting, "iChannel2"), 5);
+
+		glUniform3fv(glGetUniformLocation(progLighting, "iChannelResolution[0]"), 4, ichRes);
 
 		glBindVertexArray(vao);
 		drawFullscreen();
