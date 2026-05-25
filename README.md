@@ -27,3 +27,9 @@ cd build
 cmake .. -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 make
 ```
+
+### Run
+If you have a nvidia graphics card be sure it is used (or make it permanent by including it in your `.bashrc`)
+```bash
+__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia ./terrain_generation
+```
