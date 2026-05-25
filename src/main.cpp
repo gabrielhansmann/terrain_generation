@@ -1,14 +1,11 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <imgui.h>
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_opengl3.h>
-
 #include <vector>
 #include "utils/shaders.h"
 #include "perlin_noise.h"
 #include "compute_pass.h"
 #include "framebuffer.h"
+#include "ui.h"
 
 static int SCREEN_W = 960, SCREEN_H = 540;
 static float mouseX = 0, mouseY = 0;
@@ -45,16 +42,16 @@ int main() {
         return -1;
     }
 
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init("#version 460");
+	Ui ui;
+	ui.init(window);
 
 	// Dummy VAO - fullscreen.vert uses gl_VertexID, needs no VBO
 	GLuint vao;
 	glGenVertexArrays(1, &vao);
-	GLuint progGBuffer = LoadShaders("shaders/fullscreen.vert", "shaders/gbuffer.frag");
-	GLuint progLighting = LoadShaders("shaders/fullscreen.vert", "shaders/lighting.frag");
+	ShaderSettings shaderSettings;
+	GLuint progGBuffer = 0;
+	GLuint progLighting = 0;
+	ReloadPrograms(progGBuffer, progLighting, ui.buildShaderDefines(shaderSettings));
 
 	// erosion pass
 	ComputePass erosionPass(1080, 1080, "shaders/erosion.comp");
@@ -176,20 +173,18 @@ int main() {
 		glBindVertexArray(vao);
 		drawFullscreen();
 
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
+		ui.beginFrame();
+		bool shaderDirty = ui.renderOptions(shaderSettings);
+		ui.endFrame();
 
-        ImGui::Begin("Options Menu");
-        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-        ImGui::End();
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		if (shaderDirty)
+			ReloadPrograms(progGBuffer, progLighting, ui.buildShaderDefines(shaderSettings));
 
         glfwSwapBuffers(window);
     }
 
-    // Cleanup
+	// Cleanup
+	ui.shutdown();
     glfwTerminate();
     return 0;
 }
