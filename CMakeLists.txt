@@ -41,6 +41,7 @@ add_executable(${PROJECT_NAME}
     src/perlin_noise.cpp
 	src/compute_pass.cpp
 	src/framebuffer.cpp
+    src/ui.cpp
 )
 
 # Linking and Includes
