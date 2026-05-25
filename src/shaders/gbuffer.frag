@@ -117,7 +117,7 @@ void main() {
     float diff = pos.y - mapData.x;
 
     float breakup = 0.0;
-    #ifdef DETAIL_TEXTURE
+    #if DETAIL_TEXTURE
         vec4 breakupTex = GetChannel1(GetUV(pos));
         breakup = breakupTex.x;
         if (material == M_WATER) {
@@ -136,7 +136,7 @@ void main() {
     if (material == M_GROUND) {
         normal = mapData.yzw;
 
-        #ifndef GREYSCALE
+        #if !GREYSCALE
             occlusion = clamp01(erosion + 0.5);
 
             // Cliffs / Dirt
@@ -145,7 +145,7 @@ void main() {
 
             // Snow
             diffuseColor = mix(diffuseColor, vec3(1.0), smoothstep(0.53, 0.6, pos.y + breakup * 0.1));
-            #ifdef WATER
+            #if WATER
                 // Sand (beach)
                 diffuseColor = mix(diffuseColor, SAND_COLOR, smoothstep(WATER_HEIGHT + 0.005, WATER_HEIGHT, pos.y + breakup * 0.01));
             #endif
@@ -164,8 +164,8 @@ void main() {
         #endif
 
         // Drainage (rivers, creeks, debris flow)
-        #if defined(DRAINAGE)
-            #if defined(GREYSCALE)
+        #if DRAINAGE
+            #if GREYSCALE
                 diffuseColor = mix(diffuseColor, vec3(0.0, 2.5, 2.5), drainage);
             #else
                 diffuseColor = mix(diffuseColor, vec3(1.0), drainage);
@@ -173,7 +173,7 @@ void main() {
         #endif
     }
     else if (material == M_STRATA) {
-        #ifndef GREYSCALE
+        #if !GREYSCALE
             vec3 strata = smoothstep(0.0, 1.0, cos(diff * vec3(130.0, 190.0, 250.0)));
             diffuseColor = vec3(0.3);
             diffuseColor = mix(diffuseColor, vec3(0.50), strata.x);

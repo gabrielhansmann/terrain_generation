@@ -76,7 +76,7 @@ float march(vec3 ro, vec3 rd, out vec3 normal, out int material, out float s_t) 
         }
     }
     
-    #ifdef WATER
+    #if WATER
         vec3 waterNormal;
         vec2 water = boxIntersection(ro, rd, vec3(boxSize.x, WATER_HEIGHT, boxSize.z), waterNormal);
         if ((water.y > 0.0 && (water.x < t || t < 0.0)) && material != M_STRATA) {
@@ -84,7 +84,7 @@ float march(vec3 ro, vec3 rd, out vec3 normal, out int material, out float s_t) 
             normal = waterNormal;
             material = M_WATER;
         }
-    #endif    
+    #endif
 
     if (box.y < 0.0) {
         s_t = 9999.0;

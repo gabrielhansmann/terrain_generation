@@ -186,7 +186,7 @@ float march(vec3 ro, vec3 rd, out vec3 normal, out int material, out float s_t) 
         }
     }
     
-    #ifdef WATER
+    #if WATER
         vec3 waterNormal;
         vec2 water = boxIntersection(ro, rd, vec3(boxSize.x, WATER_HEIGHT, boxSize.z), waterNormal);
         if ((water.y > 0.0 && (water.x < t || t < 0.0)) && material != M_STRATA) {
@@ -194,7 +194,7 @@ float march(vec3 ro, vec3 rd, out vec3 normal, out int material, out float s_t) 
             normal = waterNormal;
             material = M_WATER;
         }
-    #endif    
+    #endif
 
     if (box.y < 0.0) {
         s_t = 9999.0;
@@ -223,7 +223,7 @@ vec3 GetReflection(vec3 p, vec3 r, vec3 sun, float smoothness) {
 // -----------------------------------------------------------------------------
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
-    #ifdef SHOW_BUFFER
+    #if SHOW_BUFFER
         float debugCount = 4.0;
         if (SHOW_BUFFER_NR > 0)
             debugCount = 1.0;
@@ -257,7 +257,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     // Coloring and shading
     // ------------------------------------------------------------------------
     
-    #ifdef FIXED_SUN
+    #if FIXED_SUN
         vec3 sun = normalize(vec3(-1.0, 0.4, 0.05));
     #else
         vec3 sun = rot * normalize(vec3(-1.0, 0.15, 0.25));
@@ -270,7 +270,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     if (t < 0.0) {
         // Sky
         color = fogColor * (1.0 + pow(fragCoord.y / iResolution.y, 3.0) * 3.0) * 0.5;
-        #ifdef SHOW_NORMALS
+        #if SHOW_NORMALS
             color = vec3(0.5, 0.5, 1.0);
         #endif
     }
@@ -286,7 +286,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         float diff = pos.y - mapData.x;
         
         float breakup = 0.0;
-        #ifdef DETAIL_TEXTURE
+        #if DETAIL_TEXTURE
             vec4 breakupTex = GetChannel1(GetUV(pos));
             breakup = breakupTex.x;
             if (material == M_WATER) {
@@ -308,7 +308,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         if (material == M_GROUND) {
             normal = mapData.yzw;
             
-            #ifndef GREYSCALE
+            #if !GREYSCALE
                 occlusion = clamp01(erosion + 0.5);
 
                 // Cliffs / Dirt
@@ -317,7 +317,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
                 // Snow
                 diffuseColor = mix(diffuseColor, vec3(1.0), smoothstep(0.53, 0.6, pos.y + breakup * 0.1));
-                #ifdef WATER
+                #if WATER
                     // Sand (beach)
                     diffuseColor = mix(diffuseColor, SAND_COLOR, smoothstep(WATER_HEIGHT + 0.005, WATER_HEIGHT, pos.y + breakup * 0.01));
                 #endif
@@ -336,8 +336,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             #endif
             
             // Drainage (rivers, creeks, debris flow)
-            #if defined(DRAINAGE)
-                #if defined(GREYSCALE)
+            #if DRAINAGE
+                #if GREYSCALE
                     diffuseColor = mix(diffuseColor, vec3(0.0, 2.5, 2.5), drainage);
                 #else
                     diffuseColor = mix(diffuseColor, vec3(1.0), drainage);
@@ -345,7 +345,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             #endif
         }
         else if (material == M_STRATA) {
-            #ifndef GREYSCALE
+            #if !GREYSCALE
                 vec3 strata = smoothstep(0.0, 1.0, cos(diff * vec3(130.0, 190.0, 250.0)));
                 diffuseColor = vec3(0.3);
                 diffuseColor = mix(diffuseColor, vec3(0.50), strata.x);
@@ -369,7 +369,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         
         float shadow = 1.0;
         
-        #ifdef SHADOWS
+        #if SHADOWS
             if (material != M_STRATA) {
                 // Shadow ray
                 float s_t;
@@ -396,11 +396,11 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         color += GetReflection(pos, r, sun, smoothness)
             * F_Schlick(f0, dot(-rd, normal));
 
-        #ifdef SHOW_DIFFUSE
+        #if SHOW_DIFFUSE
             color = pow(diffuseColor, vec3(1.0 / 2.2));
-        #elif defined(SHOW_NORMALS)
+        #elif SHOW_NORMALS
             color = normal.xzy * 0.5 + 0.5;
-        #elif defined(SHOW_RIDGEMAP)
+        #elif SHOW_RIDGEMAP
             if (material == M_GROUND) {
                 color = vec3(ridgemap * ridgemap);
             }
@@ -452,7 +452,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     // Tone mapping and dithering
     // ------------------------------------------------------------------------
 
-    #if !defined(SHOW_NORMALS) && !defined(SHOW_DIFFUSE)
+    #if !SHOW_NORMALS && !SHOW_DIFFUSE
         color = Tonemap_ACES(color);
         color = pow(color, vec3(1.0 / 2.2));
     #endif
@@ -467,7 +467,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     // Debug buffer display
     // ------------------------------------------------------------------------
     
-    #ifdef SHOW_BUFFER
+    #if SHOW_BUFFER
         vec3 annotationColor = vec3(0.2,0.8,0.2);
         vec2 uv = fragCoord / debugWidth;
         uv.x = 1.0 - uv.x;

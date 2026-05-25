@@ -286,7 +286,7 @@ float GetTreesAmount(float height, float normalY, float occlusion, float ridgeMa
         )
         * smoothstep(0.95, 1.0, normalY)
         * smoothstep(-1.4, 0.0, ridgeMap)
-        #if defined(WATER)
+        #if WATER
             * smoothstep(
                 WATER_HEIGHT + 0.000,
                 WATER_HEIGHT + 0.007,
@@ -429,7 +429,7 @@ vec4 Heightmap(vec2 p) {
     if (texelFetch(iChannel1, ivec2(13, 2), 0).x > 0.0)
         erosion = false;
     
-    #ifdef COMPARISON_SLIDER
+    #if COMPARISON_SLIDER
         // Animated slider that displays terrain with/without erosion.
         if (1.0 - p.y > 0.5 - cos(iTime))
             erosion = false;
@@ -478,7 +478,7 @@ vec4 Heightmap(vec2 p) {
     
     // Add trees to terrain.
     float trees = -1.0;
-    #if defined(TREES)
+    #if TREES
         vec2 deriv = n.yz + h.yz;
         float normalY = 1.0 / sqrt(1.0 + dot(deriv, deriv));
         float treesAmount = GetTreesAmount(eroded, normalY, h.x / h.w + 0.5, ridgeMap);

@@ -6,26 +6,27 @@ See Buffer A for information on the erosion technique.
 ====================================================================================
 */
 
-// Comment out to see terrain without animated parameters.
-#define ANIMATE_PARAMETERS
+// Settings are injected by the host app via #define.
+// Defaults (commented out):
+// #define ANIMATE_PARAMETERS 1
 
 #define PI 3.14159265358979
 
 void AnimateTo(inout float current, float target, float time) {
-    #if defined(ANIMATE_PARAMETERS)
+    #if ANIMATE_PARAMETERS
         current = mix(current, target, smoothstep(0.0, 1.0, time));
     #endif
 }
 
 void AnimateWaveTo(inout float current, float target, float time) {
-    #if defined(ANIMATE_PARAMETERS)
+    #if ANIMATE_PARAMETERS
         time = clamp(time, 0.0, 1.0);
         current = mix(current, target, 0.5 - 0.5 * cos(3.0 * time * PI));
     #endif
 }
 
 void AnimateLoHi(inout float current, float lo, float hi, float time) {
-    #if defined(ANIMATE_PARAMETERS)
+    #if ANIMATE_PARAMETERS
         float og = current;
         current = mix(current, lo, smoothstep(0.0, 1.0, time));
         current = mix(current, hi, smoothstep(0.0, 1.0, time - 2.0));
@@ -38,54 +39,49 @@ void AnimateLoHi(inout float current, float lo, float hi, float time) {
 // Debug options
 // -----------------------------------------------------------------------------
 
-//#define GREYSCALE
-//#define SHOW_RIDGEMAP // Try me
-//#define SHOW_DIFFUSE
-//#define SHOW_NORMALS
-//#define COMPARISON_SLIDER
-//#define SHOW_BUFFER
-
-// Requires SHOW_BUFFER to be defined.
-// 0: All buffers (1-4)
-// 1: Ridgemap
-// 2: Erosion offset
-// 3: Heightmap
-// 4: Normals
-// 5: Debug
-#define SHOW_BUFFER_NR 0
+// Debug options (injected)
+// #define GREYSCALE 0
+// #define SHOW_RIDGEMAP 0
+// #define SHOW_DIFFUSE 0
+// #define SHOW_NORMALS 0
+// #define COMPARISON_SLIDER 0
+// #define SHOW_BUFFER 0
+// #define SHOW_BUFFER_NR 0
 
 
 // -----------------------------------------------------------------------------
 // Renderer settings
 // -----------------------------------------------------------------------------
 
-#define SHADOWS
-#define FIXED_SUN
-#define WATER
-#define WATER_HEIGHT (0.36 + 0.1 * (smoothstep(54.0, 60.0, mod(iTime, 120.0)) - smoothstep(114.0, 120.0, mod(iTime, 120.0))))
-#define FOG_HEIGHT 0.465
-#define GRASS_HEIGHT 0.465
-#define DRAINAGE
-#define DRAINAGE_WIDTH 0.3
-#define TREES
-#define DETAIL_TEXTURE
-#define RAYMARCH_QUALITY 2.0
+// Renderer settings (injected)
+// #define SHADOWS 1
+// #define FIXED_SUN 1
+// #define WATER 1
+// #define WATER_HEIGHT (0.36 + 0.1 * (smoothstep(54.0, 60.0, mod(iTime, 120.0)) - smoothstep(114.0, 120.0, mod(iTime, 120.0))))
+// #define FOG_HEIGHT 0.465
+// #define GRASS_HEIGHT 0.465
+// #define DRAINAGE 1
+// #define DRAINAGE_WIDTH 0.3
+// #define TREES 1
+// #define DETAIL_TEXTURE 1
+// #define RAYMARCH_QUALITY 2.0
 
 
 // -----------------------------------------------------------------------------
 // Camera settings
 // -----------------------------------------------------------------------------
 
-#define CAMERA_MOUSE_CONTROL
-#define LOW_ANGLE mod(iTime, 240.0) >= 120.0
-#define CAMERA_DIST (LOW_ANGLE ? 1.5 : 3.25)
-#define CAMERA_FOV (LOW_ANGLE ? 20.0 : 11.0)
-#define CAMERA_ANGLE (LOW_ANGLE ? 0.25 : -0.45)
-#define CAMERA_ELEVATION (LOW_ANGLE ? -0.35 : -0.43)
-#define CAMERA_LOOKAT vec3(0.0, 0.40, 0.0)
-#define TIME_SCROLL_OFFSET vec2(cos(iTime / 60.0 * 2.0 * PI) * 2.0, -sin(iTime / 60.0 * 2.0 * PI) * 0.1)
-#define TIME_CAM_SPIN (LOW_ANGLE ? 0.0 : 1.0 / 60.0)
-#define TIME_CAM_WOBBLE 0.0 // (1.0 / 60.0)
+// Camera settings (injected)
+// #define CAMERA_MOUSE_CONTROL 1
+// #define LOW_ANGLE (mod(iTime, 240.0) >= 120.0)
+// #define CAMERA_DIST (LOW_ANGLE ? 1.5 : 3.25)
+// #define CAMERA_FOV (LOW_ANGLE ? 20.0 : 11.0)
+// #define CAMERA_ANGLE (LOW_ANGLE ? 0.25 : -0.45)
+// #define CAMERA_ELEVATION (LOW_ANGLE ? -0.35 : -0.43)
+// #define CAMERA_LOOKAT vec3(0.0, 0.40, 0.0)
+// #define TIME_SCROLL_OFFSET vec2(cos(iTime / 60.0 * 2.0 * PI) * 2.0, -sin(iTime / 60.0 * 2.0 * PI) * 0.1)
+// #define TIME_CAM_SPIN (LOW_ANGLE ? 0.0 : 1.0 / 60.0)
+// #define TIME_CAM_WOBBLE 0.0
 
 
 // -----------------------------------------------------------------------------
@@ -100,18 +96,17 @@ void AnimateLoHi(inout float current, float lo, float hi, float time) {
 
 // Colors
 
-#define CLIFF_COLOR    vec3(0.22, 0.2, 0.2)
-#define DIRT_COLOR     vec3(0.6, 0.5, 0.4)
-#define TREE_COLOR     vec3(0.12, 0.26, 0.1)
-#define GRASS_COLOR1   vec3(0.15, 0.3, 0.1)
-#define GRASS_COLOR2   vec3(0.4, 0.5, 0.2)
-#define SAND_COLOR     vec3(0.8, 0.7, 0.6)
-
-#define WATER_COLOR vec3(0.0, 0.05, 0.1)
-#define WATER_SHORE_COLOR vec3(0.0, 0.25, 0.25)
-
-#define SUN_COLOR (vec3(1.0, 0.98, 0.95) * 2.0)
-#define AMBIENT_COLOR (vec3(0.3, 0.5, 0.7) * 0.1)
+// Colors (injected)
+// #define CLIFF_COLOR    vec3(0.22, 0.2, 0.2)
+// #define DIRT_COLOR     vec3(0.6, 0.5, 0.4)
+// #define TREE_COLOR     vec3(0.12, 0.26, 0.1)
+// #define GRASS_COLOR1   vec3(0.15, 0.3, 0.1)
+// #define GRASS_COLOR2   vec3(0.4, 0.5, 0.2)
+// #define SAND_COLOR     vec3(0.8, 0.7, 0.6)
+// #define WATER_COLOR vec3(0.0, 0.05, 0.1)
+// #define WATER_SHORE_COLOR vec3(0.0, 0.25, 0.25)
+// #define SUN_COLOR (vec3(1.0, 0.98, 0.95) * 2.0)
+// #define AMBIENT_COLOR (vec3(0.3, 0.5, 0.7) * 0.1)
 
 
 // -----------------------------------------------------------------------------
@@ -214,7 +209,7 @@ void GetRay(out vec3 ro, out vec3 rd, float iTime, vec4 iMouse, vec3 iResolution
     //cameraAngle.x -= exp(-iTime * 5.0) * 4.0;
     //cameraDistance += exp(-iTime * 5.0) * 5.0;
     
-    #if defined(CAMERA_MOUSE_CONTROL)
+    #if CAMERA_MOUSE_CONTROL
         // Control camera orbit position with mouse when held down.
         if (iMouse.z > 0.5) {
             vec2 mouse = iMouse.xy / iResolution.xy;

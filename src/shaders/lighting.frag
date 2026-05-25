@@ -49,7 +49,24 @@ void main() {
     // Coloring and shading
     // ------------------------------------------------------------------------
 
-    #ifdef FIXED_SUN
+    float iRevolution = iTime * 2.0 * PI;
+    vec2 cameraAngle = vec2(
+        iRevolution * TIME_CAM_SPIN
+            + sin(iRevolution / 6.0) * TIME_CAM_WOBBLE * 6.0
+            + CAMERA_ANGLE * 2.0 * PI,
+        CAMERA_ELEVATION);
+
+    #if CAMERA_MOUSE_CONTROL
+        if (iMouse.z > 0.5) {
+            vec2 mouse = iMouse.xy / iResolution.xy;
+            mouse.y = clamp01(mix(mouse.y, 0.5, -1.0));
+            cameraAngle = (mouse - vec2(0.5, 1.0)) * vec2(-PI * 2.0, PI * 0.5);
+        }
+    #endif
+
+    mat3 rot = CameraRotation(cameraAngle.yx);
+
+    #if FIXED_SUN
         vec3 sun = normalize(vec3(-1.0, 0.4, 0.05));
     #else
         vec3 sun = rot * normalize(vec3(-1.0, 0.15, 0.25));
@@ -62,7 +79,7 @@ void main() {
     if (t < 0.0) {
         // Sky
         color = fogColor * (1.0 + pow(gl_FragCoord.y / iResolution.y, 3.0) * 3.0) * 0.5;
-        #ifdef SHOW_NORMALS
+        #if SHOW_NORMALS
             color = vec3(0.5, 0.5, 1.0);
         #endif
     }
@@ -73,7 +90,7 @@ void main() {
 
         float shadow = 1.0;
 
-        #ifdef SHADOWS
+        #if SHADOWS
             if (material != M_STRATA) {
                 // Shadow ray
                 vec3 foo;
@@ -97,9 +114,9 @@ void main() {
         color += GetReflection(pos, r, sun, smoothness)
             * F_Schlick(f0, dot(-rd, normal));
 
-        #ifdef SHOW_DIFFUSE
+        #if SHOW_DIFFUSE
             color = pow(diffuseColor, vec3(1.0 / 2.2));
-        #elif defined(SHOW_NORMALS)
+        #elif SHOW_NORMALS
             color = normal.xzy * 0.5 + 0.5;
         #endif
     }
@@ -149,7 +166,7 @@ void main() {
     // Tone mapping and dithering
     // ------------------------------------------------------------------------
 
-    #if !defined(SHOW_NORMALS) && !defined(SHOW_DIFFUSE)
+    #if !SHOW_NORMALS && !SHOW_DIFFUSE
         color = Tonemap_ACES(color);
         color = pow(color, vec3(1.0 / 2.2));
     #endif
