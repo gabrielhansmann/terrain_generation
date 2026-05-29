@@ -1,18 +1,27 @@
 #version 460 core
+#include "common.glsl"
 
-layout (location = 0) in vec3 aPos;
-layout (location = 1) in vec3 aNormal;
+layout (location = 0) in vec2 aPos;
 
-out vec3 FragPos;
-out vec3 Normal;
+uniform sampler2D iChannel0;
+uniform vec3 iChannelResolution[4];
+uniform vec3 iResolution;
+uniform mat4 uViewProj;
 
-uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
+out vec3 vWorldPos;
 
-void main()
-{
-    FragPos = vec3(model * vec4(aPos, 1.0));
-    Normal = mat3(transpose(inverse(model))) * aNormal;
-    gl_Position = projection * view * model * vec4(aPos, 1.0);
+// naming:
+// a = attribute (vertex input)
+// u = uniform (CPU-supplied constant)
+// v = varying (output interpolated to fragment shader)
+
+#include "terrain.glsl"
+
+void main() {
+	vec2 uv = GetUV(vec3(aPos.x, 0.0, aPos.y));
+	uv *= BUFFER_SIZE / iChannelResolution[0].xy;
+	float height = textureLod(iChannel0, uv, 0).x;
+
+	vWorldPos = vec3(aPos.x, height, aPos.y);
+	gl_Position = uViewProj * vec4(vWorldPos, 1.0);
 }
