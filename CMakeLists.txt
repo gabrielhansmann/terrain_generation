@@ -43,6 +43,7 @@ add_executable(${PROJECT_NAME}
 	src/framebuffer.cpp
     src/ui.cpp
 	src/terrain_mesh.cpp
+	src/utils/orbit_camera.cpp
 )
 
 # Linking and Includes
