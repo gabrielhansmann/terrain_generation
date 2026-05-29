@@ -42,6 +42,7 @@ add_executable(${PROJECT_NAME}
 	src/compute_pass.cpp
 	src/framebuffer.cpp
     src/ui.cpp
+	src/terrain_mesh.cpp
 )
 
 # Linking and Includes
