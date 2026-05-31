@@ -6,6 +6,7 @@
 // M_GROUND branch of gbuffer.frag, copied. 
 // Strata branch dropped
 // Water branch dropped for now
+// -> They will get added as seperate geometry passes (water at least)
 #include "common.glsl"
 
 uniform vec3 iResolution;

@@ -105,11 +105,14 @@ int main() {
 		erosionPass.dispatch();
 		camera.update(t, mouseX, mouseY, mouseDown, SCREEN_W, SCREEN_H, shaderSettings);
 
-		// Pass 1 - G-buffer: march + material -> 4 render targets 
+		// Pass 1 - G-buffer: rasterize mesh + material 
 		gbuffer.bind();
 		glViewport(0, 0, SCREEN_W, SCREEN_H);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		float skyDepth[4] = { -1.0f, 0.0f, 0.0f, 0.0f };
+		// glClearBufferfv instead of glClear so that sky pixels never get touched
+		// by the mesh and lighting.frag sky branch needs t = -1. glClear sets
+		// all attachments to 0
 		glClearBufferfv(GL_COLOR, 3, skyDepth); // attachment 3 = gDepth
 		glEnable(GL_DEPTH_TEST);
 		glUseProgram(progGBuffer);
