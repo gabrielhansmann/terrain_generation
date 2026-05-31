@@ -33,7 +33,7 @@ void Ui::beginFrame() {
 	ImGui::NewFrame();
 }
 
-bool Ui::renderOptions(ShaderSettings& settings) {
+bool Ui::renderOptions(ShaderSettings& settings, GLuint cubeFaceTex) {
 	bool shaderDirty = false;
 
 	ImGui::Begin("Options Menu");
@@ -48,6 +48,11 @@ bool Ui::renderOptions(ShaderSettings& settings) {
 		shaderDirty |= ImGui::Checkbox("Comparison slider", &settings.comparisonSlider);
 		shaderDirty |= ImGui::Checkbox("Show buffer", &settings.showBuffer);
 		shaderDirty |= ImGui::SliderInt("Show buffer index", &settings.showBufferNr, 0, 5);
+		ImGui::SliderInt("Cube face", &settings.debugCubeFace, 0, 5);
+        ImGui::SliderInt("Cube channel (-1=rgb)", &settings.debugCubeChannel, -1, 3);
+        // GL textures start at the bottom-left, ImGui at the top-left, so the
+        // V coordinate is flipped here to show the face the right way up
+        ImGui::Image((ImTextureID)(uintptr_t)cubeFaceTex, ImVec2(256, 256), ImVec2(0, 1), ImVec2(1, 0));
 	}
 
 	if (ImGui::CollapsingHeader("Renderer", ImGuiTreeNodeFlags_DefaultOpen)) {

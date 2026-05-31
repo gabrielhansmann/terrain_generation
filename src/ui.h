@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <glad/glad.h>
 
 struct GLFWwindow;
 
@@ -66,6 +67,8 @@ struct ShaderSettings {
 	bool comparisonSlider = false;
 	bool showBuffer = false;
 	int showBufferNr = 0;
+	int debugCubeFace = 0;
+	int debugCubeChannel = -1;
 
 	float cliffColor[3] = {0.22f, 0.2f, 0.2f};
 	float dirtColor[3] = {0.6f, 0.5f, 0.4f};
@@ -84,7 +87,7 @@ class Ui {
 		void init(GLFWwindow* window);
 		void shutdown();
 		void beginFrame();
-		bool renderOptions(ShaderSettings& settings);
+		bool renderOptions(ShaderSettings& settings, GLuint cubeFaceTex);
 		void endFrame();
 		std::string buildShaderDefines(const ShaderSettings& settings) const;
 	private:

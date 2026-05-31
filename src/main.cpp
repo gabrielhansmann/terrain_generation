@@ -56,11 +56,13 @@ int main() {
 	std::string shaderDefines = ui.buildShaderDefines(shaderSettings);
 	ReloadPrograms(progGBuffer, progLighting, shaderDefines);
 
-	// erosion pass
-	ComputePass erosionPass(1080, 1080, "shaders/erosion.comp", ComputePassTextureType::Texture2D, nullptr, shaderDefines);
+	GLuint progDebugFace = LoadShaders("shaders/fullscreen.vert", "shaders/debug_cubemap_face.frag");
 
-	// detail pass
-	ComputePass detailPass(1080, 1080, "shaders/detail.comp", ComputePassTextureType::Texture2D, nullptr, shaderDefines);
+	// erosion pass: a generated float cubemap, height looked up by direction
+	ComputePass erosionPass(1024, 1024, "shaders/erosion.comp", ComputePassTextureType::CubeMapGenerated, nullptr, shaderDefines);
+
+	// detail pass: static 2D noise, still sampled flat until the mesh goes spherical
+	ComputePass detailPass(1024, 1024, "shaders/detail.comp", ComputePassTextureType::Texture2D, nullptr, shaderDefines);
 
 	//	G-buffer
 	Framebuffer gbuffer(SCREEN_W, SCREEN_H, 4);
@@ -83,6 +85,19 @@ int main() {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+	// small target for the cubemap face viewer (debug panel).
+    const int FACE_VIEW_SIZE = 256;
+    GLuint faceViewTex, faceViewFbo;
+    glGenTextures(1, &faceViewTex);
+    glBindTexture(GL_TEXTURE_2D, faceViewTex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, FACE_VIEW_SIZE, FACE_VIEW_SIZE, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glGenFramebuffers(1, &faceViewFbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, faceViewFbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, faceViewTex, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // Render Loop
     while (!glfwWindowShouldClose(window)) {
@@ -125,7 +140,7 @@ int main() {
 		glUniformMatrix4fv(glGetUniformLocation(progGBuffer, "uViewProj"), 1, GL_FALSE, &vp[0][0]);
 
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, erosionPass.texture());
+		glBindTexture(GL_TEXTURE_CUBE_MAP, erosionPass.texture());
 		glUniform1i(glGetUniformLocation(progGBuffer, "iChannel0"), 0);
 
 		glActiveTexture(GL_TEXTURE1);
@@ -133,8 +148,8 @@ int main() {
 		glUniform1i(glGetUniformLocation(progGBuffer, "iChannel1"), 1);
 
 		float ichRes[12] = {
-			1080.0f, 1080.0f, 1.0f, // iChannel0: erosion heightmap (fixed size)
-			1080.0f, 1080.0f, 1.0f, //iChannel1: detail noise (window-sized)
+			1024.0f, 1024.0f, 1.0f, // iChannel0: erosion heightmap (fixed size)
+			1024.0f, 1024.0f, 1.0f, //iChannel1: detail noise (window-sized)
 			(float)DITHER_SIZE, (float)DITHER_SIZE, 1.0f,
 			1.0f, 1.0f, 1.0f,
 		};
@@ -172,7 +187,7 @@ int main() {
 
 		// heightmap for shadow and reflection marches
 		glActiveTexture(GL_TEXTURE4);
-		glBindTexture(GL_TEXTURE_2D, erosionPass.texture());
+		glBindTexture(GL_TEXTURE_CUBE_MAP, erosionPass.texture());
 		glUniform1i(glGetUniformLocation(progLighting, "iChannel0"), 4);
 
 		// dither
@@ -185,8 +200,20 @@ int main() {
 		glBindVertexArray(vao);
 		drawFullscreen();
 
+		// draw the chosen cubemap face into the debug panel target
+        glBindFramebuffer(GL_FRAMEBUFFER, faceViewFbo);
+        glViewport(0, 0, FACE_VIEW_SIZE, FACE_VIEW_SIZE);
+        glUseProgram(progDebugFace);
+        glUniform1i(glGetUniformLocation(progDebugFace, "uFace"), shaderSettings.debugCubeFace);
+        glUniform1i(glGetUniformLocation(progDebugFace, "uChannel"), shaderSettings.debugCubeChannel);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, erosionPass.texture());
+        glUniform1i(glGetUniformLocation(progDebugFace, "uCube"), 0);
+        drawFullscreen();
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 		ui.beginFrame();
-		bool shaderDirty = ui.renderOptions(shaderSettings);
+		bool shaderDirty = ui.renderOptions(shaderSettings, faceViewTex);
 		ui.endFrame();
 
 		if (shaderDirty)

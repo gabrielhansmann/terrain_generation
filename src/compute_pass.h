@@ -5,7 +5,12 @@
 // introduce ComputePass to work only if inputs change
 enum class ComputePassTextureType {
 	Texture2D,
-	CubeMap
+	// 6 RGBA8 faces uploaded from images -> map a picture onto a sphere
+	CubeMap,
+	// 6 RGBA32F faces the compute shader fills in by direction, one dispatch
+	// per face. This is the terrain heightmap: there is no single flat "up" to
+	// index height by, so height is looked up by a direction from the center.
+	CubeMapGenerated
 };
 
 class ComputePass {
@@ -25,8 +30,8 @@ class ComputePass {
 		void markDirty();
 		void dispatch();
 		void reloadProgram(const std::string& defines);
-		GLuint texture() const { 
-			return tex_; 
+		GLuint texture() const {
+			return tex_;
 		}
 	private:
 		std::string shaderPath_;
