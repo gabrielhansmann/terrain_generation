@@ -53,13 +53,14 @@ int main() {
 	ShaderSettings shaderSettings;
 	GLuint progGBuffer = 0;
 	GLuint progLighting = 0;
-	ReloadPrograms(progGBuffer, progLighting, ui.buildShaderDefines(shaderSettings));
+	std::string shaderDefines = ui.buildShaderDefines(shaderSettings);
+	ReloadPrograms(progGBuffer, progLighting, shaderDefines);
 
 	// erosion pass
-	ComputePass erosionPass(1080, 1080, "shaders/erosion.comp");
+	ComputePass erosionPass(1080, 1080, "shaders/erosion.comp", ComputePassTextureType::Texture2D, nullptr, shaderDefines);
 
 	// detail pass
-	ComputePass detailPass(1080, 1080, "shaders/detail.comp");
+	ComputePass detailPass(1080, 1080, "shaders/detail.comp", ComputePassTextureType::Texture2D, nullptr, shaderDefines);
 
 	//	G-buffer
 	Framebuffer gbuffer(SCREEN_W, SCREEN_H, 4);
@@ -189,7 +190,12 @@ int main() {
 		ui.endFrame();
 
 		if (shaderDirty)
-			ReloadPrograms(progGBuffer, progLighting, ui.buildShaderDefines(shaderSettings));
+			{
+				shaderDefines = ui.buildShaderDefines(shaderSettings);
+				ReloadPrograms(progGBuffer, progLighting, shaderDefines);
+				erosionPass.reloadProgram(shaderDefines);
+				detailPass.reloadProgram(shaderDefines);
+			}
 
         glfwSwapBuffers(window);
     }
