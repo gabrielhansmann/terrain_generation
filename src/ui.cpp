@@ -48,6 +48,7 @@ bool Ui::renderOptions(ShaderSettings& settings, GLuint cubeFaceTex) {
 		shaderDirty |= ImGui::Checkbox("Comparison slider", &settings.comparisonSlider);
 		shaderDirty |= ImGui::Checkbox("Show buffer", &settings.showBuffer);
 		shaderDirty |= ImGui::SliderInt("Show buffer index", &settings.showBufferNr, 0, 5);
+		ImGui::Checkbox("Wireframe", &settings.wireframe);
 		ImGui::SliderInt("Cube face", &settings.debugCubeFace, 0, 5);
         ImGui::SliderInt("Cube channel (-1=rgb)", &settings.debugCubeChannel, -1, 3);
         // GL textures start at the bottom-left, ImGui at the top-left, so the

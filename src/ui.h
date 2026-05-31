@@ -67,6 +67,7 @@ struct ShaderSettings {
 	bool comparisonSlider = false;
 	bool showBuffer = false;
 	int showBufferNr = 0;
+	bool wireframe = false;
 	int debugCubeFace = 0;
 	int debugCubeChannel = -1;
 

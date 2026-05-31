@@ -59,6 +59,7 @@ int main() {
 	ReloadPrograms(progGBuffer, progLighting, shaderDefines);
 
 	GLuint progDebugFace = LoadShaders("shaders/fullscreen.vert", "shaders/debug_cubemap_face.frag");
+	GLuint progWireframe = LoadShadersWithDefines("shaders/terrain.vert", "shaders/wireframe.frag", shaderDefines);
 
 	// erosion pass: a generated float cubemap, height looked up by direction
 	ComputePass erosionPass(1024, 1024, "shaders/erosion.comp", ComputePassTextureType::CubeMapGenerated, nullptr, shaderDefines);
@@ -163,6 +164,24 @@ int main() {
 		glDisable(GL_DEPTH_TEST);
 		gbuffer.unbind();
 
+		// Pass 2 - screen: plain wireframe, or the full deferred lighting
+		if (shaderSettings.wireframe) {
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			glViewport(0, 0, SCREEN_W, SCREEN_H);
+			glClearColor(0.05f, 0.06f, 0.08f, 1.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
+			// No depth test and no backface cull, so every triangle edge draws
+			// (front and back faces both) and the whole grid shows through the sphere.
+			glUseProgram(progWireframe);
+			glm::mat4 vpWire = camera.viewProjMatrix();
+			glUniformMatrix4fv(glGetUniformLocation(progWireframe, "uViewProj"), 1, GL_FALSE, &vpWire[0][0]);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_CUBE_MAP, erosionPass.texture());
+			glUniform1i(glGetUniformLocation(progWireframe, "iChannel0"), 0);
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+			terrainMesh.draw();
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		} else {
 		// Pass 2 - Lighting: reads G-buffer, runs BRDF + shadow + athmosphere -> screen
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glViewport(0, 0, SCREEN_W, SCREEN_H);
@@ -208,6 +227,7 @@ int main() {
 
 		glBindVertexArray(vao);
 		drawFullscreen();
+		}
 
 		// draw the chosen cubemap face into the debug panel target
         glBindFramebuffer(GL_FRAMEBUFFER, faceViewFbo);
