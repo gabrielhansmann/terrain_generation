@@ -2,9 +2,11 @@
 #include <GLFW/glfw3.h>
 #include <vector>
 #include "utils/shaders.h"
+#include "utils/orbit_camera.h"
 #include "perlin_noise.h"
 #include "compute_pass.h"
 #include "framebuffer.h"
+#include "terrain_mesh.h"
 #include "ui.h"
 
 static int SCREEN_W = 960, SCREEN_H = 540;
@@ -62,6 +64,9 @@ int main() {
 	//	G-buffer
 	Framebuffer gbuffer(SCREEN_W, SCREEN_H, 4);
 
+	TerrainMesh terrainMesh(256);
+	OrbitCamera camera;
+
 	// Dither noise for image iChannel2 (color += texture(..).xxx / 255.0).
 	const int DITHER_SIZE = 256;
 	PerlinNoise perlin(1337);
@@ -98,15 +103,22 @@ int main() {
 
 		detailPass.dispatch();
 		erosionPass.dispatch();
+		camera.update(t, mouseX, mouseY, mouseDown, SCREEN_W, SCREEN_H, shaderSettings);
 
 		// Pass 1 - G-buffer: march + material -> 4 render targets 
 		gbuffer.bind();
 		glViewport(0, 0, SCREEN_W, SCREEN_H);
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		float skyDepth[4] = { -1.0f, 0.0f, 0.0f, 0.0f };
+		glClearBufferfv(GL_COLOR, 3, skyDepth); // attachment 3 = gDepth
+		glEnable(GL_DEPTH_TEST);
 		glUseProgram(progGBuffer);
 		glUniform3f(glGetUniformLocation(progGBuffer, "iResolution"), (float)SCREEN_W, (float)SCREEN_H, 1.0f);
 		glUniform1f(glGetUniformLocation(progGBuffer, "iTime"), t);
 		glUniform4f(glGetUniformLocation(progGBuffer, "iMouse"), mouseX, (float)SCREEN_H - mouseY, mouseDown ? 1.0f : 0.0f, 0.0f);
+
+		glm::mat4 vp = camera.viewProjMatrix();
+		glUniformMatrix4fv(glGetUniformLocation(progGBuffer, "uViewProj"), 1, GL_FALSE, &vp[0][0]);
 
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, erosionPass.texture());
@@ -116,10 +128,6 @@ int main() {
 		glBindTexture(GL_TEXTURE_2D, detailPass.texture());
 		glUniform1i(glGetUniformLocation(progGBuffer, "iChannel1"), 1);
 
-		glActiveTexture(GL_TEXTURE2);
-		glBindTexture(GL_TEXTURE_2D, texDither);
-		glUniform1i(glGetUniformLocation(progGBuffer, "iChannel2"), 2);
-
 		float ichRes[12] = {
 			1080.0f, 1080.0f, 1.0f, // iChannel0: erosion heightmap (fixed size)
 			1080.0f, 1080.0f, 1.0f, //iChannel1: detail noise (window-sized)
@@ -128,8 +136,8 @@ int main() {
 		};
 		glUniform3fv(glGetUniformLocation(progGBuffer, "iChannelResolution[0]"), 4, ichRes);
 
-		glBindVertexArray(vao);
-		drawFullscreen();
+		terrainMesh.draw();
+		glDisable(GL_DEPTH_TEST);
 		gbuffer.unbind();
 
 		// Pass 2 - Lighting: reads G-buffer, runs BRDF + shadow + athmosphere -> screen

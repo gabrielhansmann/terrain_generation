@@ -16,6 +16,7 @@ class Framebuffer {
 	private:
 		GLuint m_fbo;
 		std::vector<GLuint> m_textures;
+		GLuint m_depthTexture = 0;
 		int m_width = 0;
 		int m_height = 0;
 };

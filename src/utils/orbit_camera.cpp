@@ -41,10 +41,11 @@ void OrbitCamera::update(float time, float mouseX, float mouseY, bool mouseDown,
 	// Mirrors CameraRotation(vec2(elevation, azimuth)) in common.glsl
 	float cosElevation = cosf(elevation), sinElevation = sinf(elevation);
 	float cosAzimuth = cosf(azimuth), sinAzimuth = sinf(azimuth);
+	// matches the GLSL collumns exactly
 	glm::mat3 cameraRotation(
-		glm::vec3(cosAzimuth,  sinAzimuth * sinElevation, sinAzimuth * cosElevation),
-		glm::vec3(0.0f, 	      cosElevation, 			    -sinElevation),
-		glm::vec3(-sinAzimuth, cosAzimuth * sinElevation, cosAzimuth * cosElevation)
+		glm::vec3(cosAzimuth,				0.0f ,         -sinAzimuth),
+		glm::vec3(sinAzimuth * sinElevation, cosElevation,  cosAzimuth * sinElevation),
+		glm::vec3(sinAzimuth * cosElevation, -sinElevation, cosAzimuth * cosElevation)
 	);
 
 	glm::vec3 lookAtTarget(s.cameraLookAt[0], s.cameraLookAt[1], s.cameraLookAt[2]);

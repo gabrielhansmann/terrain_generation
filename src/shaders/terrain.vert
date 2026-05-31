@@ -7,6 +7,7 @@ uniform sampler2D iChannel0;
 uniform vec3 iChannelResolution[4];
 uniform vec3 iResolution;
 uniform mat4 uViewProj;
+uniform float iTime;
 
 out vec3 vWorldPos;
 

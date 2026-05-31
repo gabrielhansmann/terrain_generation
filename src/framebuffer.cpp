@@ -21,6 +21,13 @@ Framebuffer::Framebuffer(int w, int h, int numAttachments) {
 	}
 
 	glDrawBuffers(numAttachments, drawBuffers.data());
+	
+	glGenTextures(1, &m_depthTexture);
+	glBindTexture(GL_TEXTURE_2D, m_depthTexture);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, m_depthTexture, 0);
+
 	resize(w, h);
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
@@ -40,11 +47,17 @@ void Framebuffer::resize(int w, int h) {
 		glBindTexture(GL_TEXTURE_2D, tex);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0, GL_RGBA, GL_FLOAT, nullptr);
 	}
+
+	if (m_depthTexture) {
+		glBindTexture(GL_TEXTURE_2D, m_depthTexture);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, w, h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+	}
 }
 
 Framebuffer::~Framebuffer() {
 	glDeleteTextures(m_textures.size(), m_textures.data());
 	glDeleteFramebuffers(1, &m_fbo);
+	glDeleteTextures(1, &m_depthTexture);
 }
 
 void Framebuffer::bind() const { 
