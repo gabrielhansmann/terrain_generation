@@ -150,6 +150,27 @@ GLuint LoadComputeShader(const char* computePath) {
 	return program;
 }
 
+GLuint LoadComputeShaderWithDefines(const char* computePath, const std::string& defines) {
+	std::string src = resolveIncludes(readFile(computePath), "shaders");
+	src = injectDefines(src, defines);
+	GLuint comp = compileShader(GL_COMPUTE_SHADER, src, computePath);
+
+	GLuint program = glCreateProgram();
+	glAttachShader(program, comp);
+	glLinkProgram(program);
+
+	GLint ok;
+	glGetProgramiv(program, GL_LINK_STATUS, &ok);
+	if (!ok) {
+		char log[1024];
+		glGetProgramInfoLog(program, 1024, nullptr, log);
+		std::cerr << "ERROR:SHADER::LINK [" << computePath<< "]\n" << log << "\n";
+	}
+
+	glDeleteShader(comp);
+	return program;
+}
+
 void ReloadPrograms(GLuint& gbufferProgram, GLuint& lightingProgram, const std::string& defines) {
 	GLuint newGBuffer = LoadShadersWithDefines("shaders/terrain.vert", "shaders/terrain_gbuffer.frag", defines);
 	GLuint newLighting = LoadShadersWithDefines("shaders/fullscreen.vert", "shaders/lighting.frag", defines);
