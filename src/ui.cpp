@@ -94,6 +94,27 @@ bool Ui::renderOptions(ShaderSettings& settings) {
 		shaderDirty |= ImGui::SliderFloat("Cam wobble", &settings.timeCamWobble, -1.0f, 1.0f);
 	}
 
+	if (ImGui::CollapsingHeader("Erosion", ImGuiTreeNodeFlags_DefaultOpen)) {
+		shaderDirty |= ImGui::SliderFloat("Erosion scale", &settings.erosionScale, 0.0f, 1.0f);
+		shaderDirty |= ImGui::SliderFloat("Erosion strength", &settings.erosionStrength, 0.0f, 1.0f);
+		shaderDirty |= ImGui::SliderFloat("Gully weight", &settings.erosionGullyWeight, 0.0f, 1.0f);
+		shaderDirty |= ImGui::SliderFloat("Detail", &settings.erosionDetail, 0.0f, 4.0f);
+		shaderDirty |= ImGui::DragFloat4("Rounding", settings.erosionRounding, 0.01f, 0.0f, 4.0f);
+		shaderDirty |= ImGui::DragFloat4("Onset", settings.erosionOnset, 0.01f, 0.0f, 4.0f);
+		shaderDirty |= ImGui::DragFloat2("Assumed slope", settings.erosionAssumedSlope, 0.01f, 0.0f, 2.0f);
+		shaderDirty |= ImGui::SliderFloat("Cell scale", &settings.erosionCellScale, 0.0f, 2.0f);
+		shaderDirty |= ImGui::SliderFloat("Normalization", &settings.erosionNormalization, 0.0f, 1.0f);
+		shaderDirty |= ImGui::SliderInt("Erosion octaves", &settings.erosionOctaves, 1, 8);
+		shaderDirty |= ImGui::SliderFloat("Erosion lacunarity", &settings.erosionLacunarity, 1.0f, 4.0f);
+		shaderDirty |= ImGui::SliderFloat("Erosion gain", &settings.erosionGain, 0.0f, 1.0f);
+		shaderDirty |= ImGui::DragFloat2("Height offset", settings.terrainHeightOffset, 0.01f, -2.0f, 2.0f);
+		shaderDirty |= ImGui::SliderFloat("Height frequency", &settings.heightFrequency, 0.0f, 10.0f);
+		shaderDirty |= ImGui::SliderInt("Height octaves", &settings.heightOctaves, 1, 8);
+		shaderDirty |= ImGui::SliderFloat("Height lacunarity", &settings.heightLacunarity, 1.0f, 4.0f);
+		shaderDirty |= ImGui::SliderFloat("Height gain", &settings.heightGain, 0.0f, 1.0f);
+		shaderDirty |= ImGui::SliderFloat("Height amp", &settings.heightAmp, 0.0f, 1.0f);
+	}
+
 	if (ImGui::CollapsingHeader("Colors", ImGuiTreeNodeFlags_DefaultOpen)) {
 		shaderDirty |= ImGui::ColorEdit3("Cliff", settings.cliffColor);
 		shaderDirty |= ImGui::ColorEdit3("Dirt", settings.dirtColor);
@@ -169,6 +190,25 @@ std::string Ui::buildShaderDefines(const ShaderSettings& s) const {
 	}
 	out << "#define TIME_CAM_SPIN (LOW_ANGLE ? " << s.timeCamSpinLow << " : " << s.timeCamSpinHigh << ")\n";
 	out << "#define TIME_CAM_WOBBLE " << s.timeCamWobble << "\n";
+
+	out << "#define EROSION_SCALE " << s.erosionScale << "\n";
+	out << "#define EROSION_STRENGTH " << s.erosionStrength << "\n";
+	out << "#define EROSION_GULLY_WEIGHT " << s.erosionGullyWeight << "\n";
+	out << "#define EROSION_DETAIL " << s.erosionDetail << "\n";
+	out << "#define EROSION_ROUNDING vec4(" << s.erosionRounding[0] << ", " << s.erosionRounding[1] << ", " << s.erosionRounding[2] << ", " << s.erosionRounding[3] << ")\n";
+	out << "#define EROSION_ONSET vec4(" << s.erosionOnset[0] << ", " << s.erosionOnset[1] << ", " << s.erosionOnset[2] << ", " << s.erosionOnset[3] << ")\n";
+	out << "#define EROSION_ASSUMED_SLOPE vec2(" << s.erosionAssumedSlope[0] << ", " << s.erosionAssumedSlope[1] << ")\n";
+	out << "#define EROSION_CELL_SCALE " << s.erosionCellScale << "\n";
+	out << "#define EROSION_NORMALIZATION " << s.erosionNormalization << "\n";
+	out << "#define EROSION_OCTAVES " << s.erosionOctaves << "\n";
+	out << "#define EROSION_LACUNARITY " << s.erosionLacunarity << "\n";
+	out << "#define EROSION_GAIN " << s.erosionGain << "\n";
+	out << "#define TERRAIN_HEIGHT_OFFSET vec2(" << s.terrainHeightOffset[0] << ", " << s.terrainHeightOffset[1] << ")\n";
+	out << "#define HEIGHT_FREQUENCY " << s.heightFrequency << "\n";
+	out << "#define HEIGHT_OCTAVES " << s.heightOctaves << "\n";
+	out << "#define HEIGHT_LACUNARITY " << s.heightLacunarity << "\n";
+	out << "#define HEIGHT_GAIN " << s.heightGain << "\n";
+	out << "#define HEIGHT_AMP " << s.heightAmp << "\n";
 
 	out << "#define CLIFF_COLOR vec3(" << s.cliffColor[0] << ", " << s.cliffColor[1] << ", " << s.cliffColor[2] << ")\n";
 	out << "#define DIRT_COLOR vec3(" << s.dirtColor[0] << ", " << s.dirtColor[1] << ", " << s.dirtColor[2] << ")\n";

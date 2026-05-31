@@ -40,6 +40,25 @@ struct ShaderSettings {
 	float timeCamSpinHigh = 1.0f / 60.0f;
 	float timeCamWobble = 0.0f;
 
+	float erosionScale = 0.15f;
+	float erosionStrength = 0.22f;
+	float erosionGullyWeight = 0.5f;
+	float erosionDetail = 1.5f;
+	float erosionRounding[4] = {0.1f, 0.0f, 0.1f, 2.0f};
+	float erosionOnset[4] = {1.25f, 1.25f, 2.8f, 1.5f};
+	float erosionAssumedSlope[2] = {0.7f, 1.0f};
+	float erosionCellScale = 0.7f;
+	float erosionNormalization = 0.5f;
+	int erosionOctaves = 5;
+	float erosionLacunarity = 2.0f;
+	float erosionGain = 0.5f;
+	float terrainHeightOffset[2] = {-0.65f, 0.0f};
+	float heightFrequency = 3.0f;
+	int heightOctaves = 3;
+	float heightLacunarity = 2.0f;
+	float heightGain = 0.1f;
+	float heightAmp = 0.125f;
+
 	bool greyscale = false;
 	bool showRidgemap = false;
 	bool showDiffuse = false;
