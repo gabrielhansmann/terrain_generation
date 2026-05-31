@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 #include <vector>
 #include "cube_sphere_mesh.h"
+#include "glm/matrix.hpp"
 #include "utils/shaders.h"
 #include "utils/orbit_camera.h"
 #include "perlin_noise.h"
@@ -139,6 +140,8 @@ int main() {
 
 		glm::mat4 vp = camera.viewProjMatrix();
 		glUniformMatrix4fv(glGetUniformLocation(progGBuffer, "uViewProj"), 1, GL_FALSE, &vp[0][0]);
+		glm::vec3 camPos = camera.position();
+		glUniform3fv(glGetUniformLocation(progGBuffer, "uCamPos"), 1, &camPos[0]);
 
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, erosionPass.texture());
@@ -165,6 +168,11 @@ int main() {
 		glViewport(0, 0, SCREEN_W, SCREEN_H);
 		glClear(GL_COLOR_BUFFER_BIT);
 		glUseProgram(progLighting);
+
+		glm::vec3 lightCamPos = camera.position();
+		glUniform3fv(glGetUniformLocation(progLighting, "uCamPos"), 1, &lightCamPos[0]);
+		glm::mat4 invVP = glm::inverse(vp);
+		glUniformMatrix4fv(glGetUniformLocation(progLighting, "uInvViewProj"), 1, GL_FALSE, &invVP[0][0]);
 
 		glUniform3f(glGetUniformLocation(progLighting, "iResolution"), (float)SCREEN_W, (float)SCREEN_H, 1.0f);
 		glUniform1f(glGetUniformLocation(progLighting, "iTime"), t);

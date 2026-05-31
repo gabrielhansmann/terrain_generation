@@ -13,6 +13,9 @@ uniform sampler2D gNormalMaterial;
 uniform sampler2D gF0Smoothness;
 uniform sampler2D gDepth;
 
+uniform vec3 uCamPos;
+uniform mat4 uInvViewProj;
+
 out vec4 FragColor;
 
 #include "terrain.glsl"
@@ -40,9 +43,13 @@ void main() {
     // Set up camera
     // ------------------------------------------------------------------------
 
-    vec3 ro;
-    vec3 rd;
-    GetRay(ro, rd, iTime, iMouse, iResolution, gl_FragCoord.xy, 0.0);
+	// deferred pass: no per-vertex world position so rebuild this pixels eye
+	// ray by sending it back thorugh inverse cam matrix.
+	// keeps camera model entirely on the CPU
+    vec3 ro = uCamPos;
+    vec2 ndc = (gl_FragCoord.xy / iResolution.xy) * 2.0 - 1.0;
+	vec4 farPoint = uInvViewProj * vec4(ndc, 1.0, 1.0);
+	vec3 rd = normalize(farPoint.xyz / farPoint.w - ro);
 
 
     // ------------------------------------------------------------------------

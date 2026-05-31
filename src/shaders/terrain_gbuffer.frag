@@ -16,6 +16,8 @@ uniform float iTime;
 uniform vec4 iMouse;
 uniform samplerCube iChannel0;
 
+uniform vec3 uCamPos;
+
 in vec3 vWorldPos;
 
 layout(location = 0) out vec4 gAlbedoOcclusion; // rgb=diffuseColor, a=occlusion
@@ -56,11 +58,10 @@ void main() {
 	vec3 normal = normalize(cross(pA - pC, pB - pC));
 	if (dot(normal, dir) < 0.0) normal = -normal; //always point outward
 
-	// ray parameter, same contract: lightning.frag rebuilds the point as ro + rd * t
-	vec3 ro, rd;
-	GetRay(ro, rd, iTime, iMouse, iResolution, gl_FragCoord.xy, 0.0);
-	float t = dot(vWorldPos - ro, rd);
-
+	// distance from surface point to eye so lighting can rebuuld it along
+	// the pixels ray. rasteriser already knows this point, dont rederive
+	// a camera ray just to measure the distance
+	float t = length(vWorldPos - uCamPos);
 
 	// altitude replaces the flat shaders pos.y: slope is how far the surface tilts
 	// fomr local up.
