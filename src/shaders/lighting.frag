@@ -111,8 +111,13 @@ void main() {
             * (dot(normal, sun * vec3(1.0, -1.0, 1.0)) * 0.5 + 0.5)
             * Fd_Lambert() / PI;
         // Reflection
-        color += GetReflection(pos, r, sun, smoothness)
-            * F_Schlick(f0, dot(-rd, normal));
+		// Only shiny surfaces reflect and since water is pushed to later, skip
+		// this for now (also keeps flat-box march from running one terrain
+		// becomes a sphere)
+		if (smoothness > 0.0) {
+			color += GetReflection(pos, r, sun, smoothness)
+				* F_Schlick(f0, dot(-rd, normal));
+		}
 
         #if SHOW_DIFFUSE
             color = pow(diffuseColor, vec3(1.0 / 2.2));

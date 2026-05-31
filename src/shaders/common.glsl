@@ -117,6 +117,8 @@ void AnimateLoHi(inout float current, float lo, float hi, float time) {
 // #define BUFFER_SIZE vec2(min(min(iResolution.x, iResolution.y), 1080.0))
 //#define BUFFER_SIZE vec2(min(min(iResolution.x, iResolution.y), 768.0))
 #define BUFFER_SIZE vec2(1024.0)
+#define PLANET_RADIUS 1.0
+#define HEIGHT_SCALE 0.06
 #define DISCARD_MAP (fragCoord.x >= BUFFER_SIZE.x || fragCoord.y >= BUFFER_SIZE.y)
 #define TIME_SCROLL_OFFSET_INT (round(TIME_SCROLL_OFFSET * BUFFER_SIZE) / BUFFER_SIZE)
 #define TIME_SCROLL_OFFSET_FRAC (TIME_SCROLL_OFFSET - TIME_SCROLL_OFFSET_INT)

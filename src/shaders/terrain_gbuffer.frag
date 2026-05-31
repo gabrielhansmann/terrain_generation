@@ -1,20 +1,20 @@
 #version 460
-// receives vWorldPos (interpolated from terrain.vert), calls GetRay() with 
-// the same unifors as gbuffer.frag to recover ro and rd for this pixel.
-// Then: t = dot(vWorldPos - ro, rd)  replaced the entire 48-step march loop.
-// Everything after that (map(), color mixing, G-Buffer writes) is the 
-// M_GROUND branch of gbuffer.frag, copied. 
+// receives vWorldPos interpolated from terrain.vert (a point on the displaced planet)
+// samples the height cubemap by direction, build a world-space normal from
+// height neighbours, writes the same 4 G-Buffer outputs as before.
 // Strata branch dropped
 // Water branch dropped for now
 // -> They will get added as seperate geometry passes (water at least)
+// Detail noise is dropped until it gets a spherical mapping.
+// Coloring is the M_GROUND branch of the flat shader, re-anchored: "altitude"
+// is the sampled height and "up" is the radial direction since pos.y is no longer
+// altitude on a sphere
 #include "common.glsl"
 
 uniform vec3 iResolution;
 uniform float iTime;
 uniform vec4 iMouse;
-uniform sampler2D iChannel0;
-uniform sampler2D iChannel1;
-uniform vec3 iChannelResolution[4];
+uniform samplerCube iChannel0;
 
 in vec3 vWorldPos;
 
@@ -23,121 +23,84 @@ layout(location = 1) out vec4 gNormalMaterial; // rgb=normal, a=material/2.0
 layout(location = 2) out vec4 gF0Smoothness; // r=f0, g=smoothness
 layout(location = 3) out vec4 gDepth; // r=t, -1 for sky
 
-#include "terrain.glsl"
-
-// Get detail texture from Buffer B.
-vec4 GetChannel1(vec2 uv) {
-    uv *= BUFFER_SIZE / iChannelResolution[1].xy;
-    return texture(iChannel1, uv);
-}
-
-// Get map channels from Buffer A, including the packed data.
-vec3 GetChannel0Data(vec2 uv, out vec4 data) {
-    vec2 p = uv * BUFFER_SIZE - 0.5;
-
-    ivec2 i = ivec2(p);
-    vec2 b = fract(p);
-    vec2 a = 1.0 - b;
-
-    // Get the four texels directly, rather than an interpolated result.
-    vec4 AA = texelFetch(iChannel0, i, 0);
-    vec4 AB = texelFetch(iChannel0, i + ivec2(0, 1), 0);
-    vec4 BA = texelFetch(iChannel0, i + ivec2(1, 0), 0);
-    vec4 BB = texelFetch(iChannel0, i + ivec2(1, 1), 0);
-    // Use regular interpolation for the normal return value.
-    // The w channel should not be used.
-    vec4 ret = (AA * a.y + AB * b.y) * a.x + (BA * a.y + BB * b.y) * b.x;
-
-    // Unpack each of the four samples into a vec4.
-    vec4 AAdata = unpack4(AA.w);
-    vec4 ABdata = unpack4(AB.w);
-    vec4 BAdata = unpack4(BA.w);
-    vec4 BBdata = unpack4(BB.w);
-    // Interpolate the four vec4s so each piece of data is correctly interpolated.
-    data = (AAdata * a.y + ABdata * b.y) * a.x + (BAdata * a.y + BBdata * b.y) * b.x;
-
-    return ret.xyz;
-}
-
-// Get all map channels. This is needed for texturing and shading.
-vec4 map(vec2 uv, out float erosion, out float ridgemap, out float trees, out float debug) {
-    vec4 data;
-    vec3 tex = GetChannel0Data(uv, data);
-
-    float height = tex.x;
-
-    // Calculate an accurate normal from the neighbouring points.
-    vec2 uv1 = uv + vec2(1.0 / BUFFER_SIZE.x, 0.0);
-    vec2 uv2 = uv + vec2(0.0, 1.0 / BUFFER_SIZE.y);
-    float h1 = GetChannel0(uv1).x;
-    float h2 = GetChannel0(uv2).x;
-    vec3 v1 = vec3(uv1 - uv, (h1 - height));
-    vec3 v2 = vec3(uv2 - uv, (h2 - height));
-    vec3 normal = normalize(cross(v1, v2)).xzy;
-
-    erosion  = data.x * 2.0 - 1.0;
-    ridgemap = data.y;
-    trees    = data.z;
-    debug    = data.w;
-
-    return vec4(height, normal);
-}
-
+// #include "terrain.glsl"
 
 void main() {
-    // ------------------------------------------------------------------------
-    // Set up camera
-    // ------------------------------------------------------------------------
+	// direction from planet center to this fragment (cubemap lookup key)
+	vec3 dir = normalize(vWorldPos);
 
-    vec3 ro;
-    vec3 rd;
-    GetRay(ro, rd, iTime, iMouse, iResolution, gl_FragCoord.xy, 0.0);
+	// all four terrain values in one lookup, one per channel
+	vec4 texel = texture(iChannel0, dir);
+	float height = texel.x;
+	float erosion = texel.y * 2.0 - 1.0;
+	float ridgemap = texel.z;
+	float trees = texel.w;
 
+	// world-space normal from height neighbors -> these are small angular
+	// steps around dir, not UV offsets. Two tangent directions span the local
+	// surface, displace all three points by their height and cross the edges.
+	// eps is about one heightmap texel
+	vec3 up = abs(dir.y) < 0.999 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+	vec3 tan1 = normalize(cross(up, dir));
+	vec3 tan2 = cross(dir, tan1);
+	float eps = 1.0 / BUFFER_SIZE.x;
+
+	vec3 dirA = normalize(dir + tan1 * eps);
+	vec3 dirB = normalize(dir + tan2 * eps);
+	float hA = texture(iChannel0, dirA).x;
+	float hB = texture(iChannel0, dirB).x;
+
+	vec3 pC = dir * (PLANET_RADIUS + height * HEIGHT_SCALE);
+	vec3 pA = dirA * (PLANET_RADIUS + hA * HEIGHT_SCALE);
+	vec3 pB = dirB * (PLANET_RADIUS + hB * HEIGHT_SCALE);
+	vec3 normal = normalize(cross(pA - pC, pB - pC));
+	if (dot(normal, dir) < 0.0) normal = -normal; //always point outward
+
+	// ray parameter, same contract: lightning.frag rebuilds the point as ro + rd * t
+	vec3 ro, rd;
+	GetRay(ro, rd, iTime, iMouse, iResolution, gl_FragCoord.xy, 0.0);
 	float t = dot(vWorldPos - ro, rd);
-	vec3 pos = vWorldPos;
 
-    float erosion;
-    float ridgemap;
-    float trees;
-    float debug;
-    vec4 mapData = map(GetUV(pos), erosion, ridgemap, trees, debug);
-    float drainage = clamp01((1.0 - clamp01(ridgemap / DRAINAGE_WIDTH)) * 1.5);
-    float diff = pos.y - mapData.x;
 
-    float breakup = 0.0;
-    #if DETAIL_TEXTURE
-        vec4 breakupTex = GetChannel1(GetUV(pos));
-        breakup = breakupTex.x;
-    #endif
+	// altitude replaces the flat shaders pos.y: slope is how far the surface tilts
+	// fomr local up.
+	float altitude = height;
+	float slope = 1.0 - dot(normal, dir);
+	
+	float drainage = clamp01((1.0 - clamp01(ridgemap / DRAINAGE_WIDTH)) * 1.5);
 
-	vec3 normal = mapData.yzw;
-    vec3 f0 = vec3(0.04);
+	// detail break-up is dropped until it gets spherical mapping: kept a 0
+	// so the coloring below is unchanged and detail returns cleanly later
+	float breakup = 0.0;
+	
+	vec3 f0 = vec3(0.04);
     float smoothness = 0.0;
     float occlusion = 1.0;
     vec3 diffuseColor = vec3(0.5);
 
+	// pos.y -> altitude (there is no pos variable in the new shader)
+	// (1.0 - normal.y) -> slope
 	#if !GREYSCALE
 		occlusion = clamp01(erosion + 0.5);
 
 		// Cliffs / Dirt
-		diffuseColor = CLIFF_COLOR * smoothstep(0.4, 0.52, pos.y);
+		diffuseColor = CLIFF_COLOR * smoothstep(0.4, 0.52, altitude);
 		diffuseColor = mix(diffuseColor, DIRT_COLOR, smoothstep(0.6, 0.0, occlusion + breakup * 1.5));
 
 		// Snow
-		diffuseColor = mix(diffuseColor, vec3(1.0), smoothstep(0.53, 0.6, pos.y + breakup * 0.1));
+		diffuseColor = mix(diffuseColor, vec3(1.0), smoothstep(0.53, 0.6, altitude + breakup * 0.1));
 		#if WATER
 			// Sand (beach)
-			diffuseColor = mix(diffuseColor, SAND_COLOR, smoothstep(WATER_HEIGHT + 0.005, WATER_HEIGHT, pos.y + breakup * 0.01));
+			diffuseColor = mix(diffuseColor, SAND_COLOR, smoothstep(WATER_HEIGHT + 0.005, WATER_HEIGHT, altitude + breakup * 0.01));
 		#endif
 
 		// Grass
-		vec3 grassMix = mix(GRASS_COLOR1, GRASS_COLOR2, smoothstep(0.4, 0.6, pos.y - erosion * 0.05 + breakup * 0.3));
+		vec3 grassMix = mix(GRASS_COLOR1, GRASS_COLOR2, smoothstep(0.4, 0.6, altitude - erosion * 0.05 + breakup * 0.3));
 		diffuseColor = mix(diffuseColor, grassMix,
-			smoothstep(GRASS_HEIGHT + 0.05, GRASS_HEIGHT + 0.02, pos.y + 0.01 + (occlusion - 0.8) * 0.05 - breakup * 0.02)
-			* smoothstep(0.8, 1.0, 1.0 - (1.0 - normal.y) * (1.0 - trees) + breakup * 0.1));
+			smoothstep(GRASS_HEIGHT + 0.05, GRASS_HEIGHT + 0.02, altitude + 0.01 + (occlusion - 0.8) * 0.05 - breakup * 0.02)
+			* smoothstep(0.8, 1.0, 1.0 - slope * (1.0 - trees) + breakup * 0.1));
 
 		// Trees
-		float tree = max(0.0, trees * 2.0 - 1.0);
 		diffuseColor = mix(diffuseColor, TREE_COLOR * pow(trees, 8.0), clamp01(trees * 2.2 - 0.8) * 0.6);
 
 		diffuseColor *= 1.0 + breakup * 0.5;

@@ -1,6 +1,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <vector>
+#include "cube_sphere_mesh.h"
 #include "utils/shaders.h"
 #include "utils/orbit_camera.h"
 #include "perlin_noise.h"
@@ -67,7 +68,7 @@ int main() {
 	//	G-buffer
 	Framebuffer gbuffer(SCREEN_W, SCREEN_H, 4);
 
-	TerrainMesh terrainMesh(256);
+	CubeSphereMesh terrainMesh(128); // quads per face
 	OrbitCamera camera;
 
 	// Dither noise for image iChannel2 (color += texture(..).xxx / 255.0).
