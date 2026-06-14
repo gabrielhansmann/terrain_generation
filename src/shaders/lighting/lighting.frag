@@ -107,8 +107,13 @@ void main() {
             }
         #endif
 
-        // Ambient
-        color = diffuseColor * SkyColor(normal, sun) * Fd_Lambert();
+        // Sky light is sunlight scattered through the air, so it only reaches
+		// the day side and the twilight band near the terminator. The night 
+		// face turns away from the lit atmosphere and goes dark. Without this
+		// factor, the ambient dome lights the whole globe evenly and there is 
+		// no night.
+		float skyLight = smoothstep(-0.3, 0.2, dot(normal, sun));
+        color = diffuseColor * SkyColor(normal, sun) * Fd_Lambert() * skyLight;
         color *= occlusion;
         // Direct
         color += Shade(diffuseColor, f0, smoothness, normal, -rd, sun, SUN_COLOR * shadow);
@@ -137,18 +142,25 @@ void main() {
     // Atmosphere rendering
     // ------------------------------------------------------------------------
 
-	// The air is a shell wrapped around the planet
-	// -> integrate scattering along the part of the eye ray inside the outer
-	// atmosphere sphere, stopping at the terrain when the ray hits it
+	// single-scattering model ported from Dimas Leenman's
+	// "atmospheric-scattering-explained" (atmosphere.glsl, MIT license).
+	// Its adapted to our units (plaet radius = 1, not metres) and our 
+	// sphereIntersection helper. atmosphere.glsl:NN references point at that file
 	vec2 shell = sphereIntersection(ro, rd, PLANET_RADIUS + ATMOSPHERE_HEIGHT);
 
     float sunCos = dot(rd, sun);
     float phaseR = PhaseRayleigh(sunCos);
-    float phaseM = PhaseMie(sunCos, 0.6);
+	// The Mie sun-glow must not shine thorugh the ssolid planet, so switch off
+	// (atmosphere.glsl:140,170)
+    float phaseM = (t < 0.0) ? PhaseMie(sunCos, 0.76) : 0.0;
 
-    vec2 opticalDistance = vec2(0.0);
+	// rayleigh and mie air corssed by the eye ray so far, kept in seperate channels
+	// since each color is extinguished by a different amount
+	// -> this split is what reddens light at the terminator
+    vec3 opticalDistance = vec3(0.0);
     vec3 transmittance = vec3(1.0);
-    vec3 scatteredLight = vec3(0.0);
+    vec3 scatteredRayleigh = vec3(0.0);
+	vec3 scatteredMie = vec3(0.0);
 
 	if (shell.y > 0.0) { // ray reaches the shell at all
 		float marchStart = max(shell.x, 0.0); // clamp in case the camera is inside
@@ -161,20 +173,64 @@ void main() {
 			// altitude is distance out from the planet center, so density peaks
 			// at the surface and fades to nothing at the top of the shell 
 			float altitude = length(samplePos) - PLANET_RADIUS;
-			float density = clamp01(1.0 - altitude / ATMOSPHERE_HEIGHT);
 
-			float densityR = density * 1e5;
-			float densityM = density * 1e5;
+			// air is densest at the surface and this out exponentially with height,
+			// rayleigh reaching higher than mie. Ozone (.z) is instead a buno
+			// at mid altitude, tied to the Rayleigh profile
+			// (dimev density + ozone, atmosphere.glsl: 182, 187-188)
+			vec3 density;
+			density.xy = exp(-altitude / vec2(HEIGHT_RAYLEIGH, HEIGHT_MIE));
+			float ozoneDenom = (HEIGHT_OZONE - altitude) / OZONE_FALLOFF;
+			density.z = density.x / (ozoneDenom * ozoneDenom + 1.0);
+			density *= ATMOSPHERE_DENSITY * stepSize;
+
+			opticalDistance += density;
+
+			// light ray: walk toward the sun and add up the air on the way,
+			// We do not test whether the planet blocks the sun. A path
+			// grazes a long way thorugh dense low air build hughe optical depth
+			// and darkens on its own -> sunset fades smoothly past the
+			// terminator onto the night side instead of snapping off
+			// Dimev inner light loop, atmoshere.glsl: 197-244)
+			vec2 sunShell = sphereIntersection(samplePos, sun, PLANET_RADIUS + ATMOSPHERE_HEIGHT);
+			float sunStep = sunShell.y / 8.0;
+			vec3 sunDepth = vec3(0.0); 
+			for (float j = 0.0; j < 8.0; j++) {
+				vec3 sunSample = samplePos + sun * (j + 0.5) * sunStep;
+				// max(.,0) if the path clips into the planet, treat as dense surface air
+				float sunAltitude = max(length(sunSample) - PLANET_RADIUS, 0.0);
+				vec3 sunDensity;
+				sunDensity.xy = exp(-sunAltitude / vec2(HEIGHT_RAYLEIGH, HEIGHT_MIE));
+				float sunOzoneDenom = (HEIGHT_OZONE - sunAltitude) / OZONE_FALLOFF;
+				sunDensity.z = sunDensity.x / (sunOzoneDenom * sunOzoneDenom + 1.0);
+				sunDepth += sunDensity * ATMOSPHERE_DENSITY * sunStep;
+			}
+
+			// fraction of sunlight reaching this sample and surviving back to
+			// the eye: extinction over both parts, per color. The long twilight path
+			// eats blue first and leaves red (dimev attn, atmosphere:glsl:248)
+			vec3 attentuation = exp(-(C_RAYLEIGH * (opticalDistance.x + sunDepth.x)
+						   			+ C_MIE * (opticalDistance.y + sunDepth.y)
+						   			+ C_OZONE * (opticalDistance.z + sunDepth.z)));
+
+			scatteredRayleigh += density.x * attentuation;
+			scatteredMie += density.y * attentuation;
 			
-			opticalDistance += stepSize * vec2(densityR, densityM);
-			transmittance = exp(-(opticalDistance.x * C_RAYLEIGH + opticalDistance.y * C_MIE));
-
-			scatteredLight += transmittance * C_RAYLEIGH * phaseR * densityR * stepSize;
-			scatteredLight += transmittance * C_MIE * phaseM * densityM * stepSize;
 		}
-    }
 
-    color = color * transmittance + scatteredLight * 10.0;
+		// opacity of the whole air column used to dim the surface behind it
+		// dimev opacity, atmosphere.glsl:260)
+ 		transmittance = exp(-(C_RAYLEIGH * opticalDistance.x 
+					   		+ C_MIE * opticalDistance.y
+					   		+ C_OZONE * opticalDistance.z));
+    }
+	// Each scattering type tinted by its coefficient and aimed by its phase
+	// then laid over the surface (already dimmed by the air in front of it)
+	// (dimev final terun, atmosphere.glsl:263-267)
+	vec3 scatteredLight = phaseR * C_RAYLEIGH * scatteredRayleigh
+						+ phaseM * C_MIE * scatteredMie;
+
+    color = color * transmittance + scatteredLight * SUN_INTENSITY;
 
 
     // ------------------------------------------------------------------------

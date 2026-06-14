@@ -120,6 +120,22 @@ void AnimateLoHi(inout float current, float lo, float hi, float time) {
 #define PLANET_RADIUS 1.0
 #define HEIGHT_SCALE 0.06
 #define ATMOSPHERE_HEIGHT 0.1 // how far the atmosphere is above the surface in planet radii
+// sacle heights: the altitude over which each scattering type thins out. 
+// Mie (haze, dust) hugs the surface; Rayleight (the blue of the sky) reaches higher.
+// ratios taken from dimev's HEIGHT_RAY=8e3 / HEIGHT_MIE=1.2e3 over a 100e3-thick
+// atmosphere (atmosphere.glsl:72-73), rescaled to our shell.
+// -> https://github.com/Dimev/atmospheric-scattering-explained / https://www.shadertoy.com/view/wlBXWK
+#define HEIGHT_RAYLEIGH (ATMOSPHERE_HEIGHT * 0.15)
+#define HEIGHT_MIE (ATMOSPHERE_HEIGHT * 0.012)
+// The ozon layer sits in a band at mid altitude, not ground. Peak and width as Dimevs
+// 30e3 / 4e3 over a 100e3 atmosphere (atmosphere.glsl:74-75)
+#define HEIGHT_OZONE (ATMOSPHERE_HEIGHT * 0.3)
+#define OZONE_FALLOFF (ATMOSPHERE_HEIGHT * 0.04)
+// particle-count multiplier. World is measured in planet radii (~1) but the 
+// scattering coefficients are tuned for metres, so this rescales the air into
+// a visible thickness. The single know for "how hazy the planet looks"
+#define ATMOSPHERE_DENSITY 1e6
+#define SUN_INTENSITY 25.0
 #define DISCARD_MAP (fragCoord.x >= BUFFER_SIZE.x || fragCoord.y >= BUFFER_SIZE.y)
 #define TIME_SCROLL_OFFSET_INT (round(TIME_SCROLL_OFFSET * BUFFER_SIZE) / BUFFER_SIZE)
 #define TIME_SCROLL_OFFSET_FRAC (TIME_SCROLL_OFFSET - TIME_SCROLL_OFFSET_INT)
@@ -341,6 +357,7 @@ vec3 Shade(vec3 diffuse, vec3 f0, float smoothness, vec3 n, vec3 v, vec3 l, vec3
 
 #define C_RAYLEIGH (vec3(5.802, 13.558, 33.100) * 1e-6)
 #define C_MIE (vec3(3.996,  3.996,  3.996) * 1e-6)
+#define C_OZONE (vec3(2.04, 4.97, 0.195) * 1e-5)
 
 float PhaseRayleigh(float costh) {
 	return 3.0 * (1.0 + costh * costh) / (16.0 * PI);
