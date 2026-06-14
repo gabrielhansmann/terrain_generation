@@ -138,40 +138,44 @@ void main() {
     // Atmosphere rendering
     // ------------------------------------------------------------------------
 
-    vec3 boxNormal;
-    vec2 box = boxIntersection(ro, rd, boxSize, boxNormal);
+	// The air is a shell wrapped around the planet
+	// -> integrate scattering along the part of the eye ray inside the outer
+	// atmosphere sphere, stopping at the terrain when the ray hits it
+	vec2 shell = sphereIntersection(ro, rd, PLANET_RADIUS + ATMOSPHERE_HEIGHT);
 
-    float costh = dot(rd, sun);
-    float phaseR = PhaseRayleigh(costh);
-    float phaseM = PhaseMie(costh, 0.6);
+    float sunCos = dot(rd, sun);
+    float phaseR = PhaseRayleigh(sunCos);
+    float phaseM = PhaseMie(sunCos, 0.6);
 
-    vec2 od = vec2(0.0);
-    vec3 tsm = vec3(1.0);
-    vec3 sct = vec3(0.0);
-    float rayLength = (t > 0.0 ? t : box.y) - box.x;
-    float stepSize = rayLength / 16.0;
-    for (float i = 0.0; i < 16.0; i++) {
-        vec3 p = ro + rd * (box.x + (i + 0.5) * stepSize);
+    vec2 opticalDistance = vec2(0.0);
+    vec3 transmittance = vec3(1.0);
+    vec3 scatteredLight = vec3(0.0);
 
-        float h = max(0.0, p.y - 0.35);
-        float d = 1.0 - clamp01(h / 0.2);
+	if (shell.y > 0.0) { // ray reaches the shell at all
+		float marchStart = max(shell.x, 0.0); // clamp in case the camera is inside
+		float marchEnd  = (t > 0.0) ? t : shell.y;
+		float stepSize = (marchEnd - marchStart) / 16.0;
 
-        if (p.y < 0.35) {
-            d = 0.0;
-        }
+		for (float i = 0.0; i < 16.0; i++) {
+			vec3 samplePos = ro + rd * (marchStart + (i + 0.5) * stepSize);	
 
-        float densityR = d * 1e5;
-        float densityM = d * 1e5;
+			// altitude is distance out from the planet center, so density peaks
+			// at the surface and fades to nothing at the top of the shell 
+			float altitude = length(samplePos) - PLANET_RADIUS;
+			float density = clamp01(1.0 - altitude / ATMOSPHERE_HEIGHT);
 
-        od += stepSize * vec2(densityR, densityM);
+			float densityR = density * 1e5;
+			float densityM = density * 1e5;
+			
+			opticalDistance += stepSize * vec2(densityR, densityM);
+			transmittance = exp(-(opticalDistance.x * C_RAYLEIGH + opticalDistance.y * C_MIE));
 
-        tsm = exp(-(od.x * C_RAYLEIGH + od.y * C_MIE));
-
-        sct += tsm * C_RAYLEIGH * phaseR * densityR * stepSize;
-        sct += tsm * C_MIE * phaseM * densityM * stepSize;
+			scatteredLight += transmittance * C_RAYLEIGH * phaseR * densityR * stepSize;
+			scatteredLight += transmittance * C_MIE * phaseM * densityM * stepSize;
+		}
     }
 
-    color = color * tsm + sct * 10.0;
+    color = color * transmittance + scatteredLight * 10.0;
 
 
     // ------------------------------------------------------------------------

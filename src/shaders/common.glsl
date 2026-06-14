@@ -119,6 +119,7 @@ void AnimateLoHi(inout float current, float lo, float hi, float time) {
 #define BUFFER_SIZE vec2(1024.0)
 #define PLANET_RADIUS 1.0
 #define HEIGHT_SCALE 0.06
+#define ATMOSPHERE_HEIGHT 0.1 // how far the atmosphere is above the surface in planet radii
 #define DISCARD_MAP (fragCoord.x >= BUFFER_SIZE.x || fragCoord.y >= BUFFER_SIZE.y)
 #define TIME_SCROLL_OFFSET_INT (round(TIME_SCROLL_OFFSET * BUFFER_SIZE) / BUFFER_SIZE)
 #define TIME_SCROLL_OFFSET_FRAC (TIME_SCROLL_OFFSET - TIME_SCROLL_OFFSET_INT)
@@ -176,6 +177,22 @@ vec2 boxIntersection(in vec3 ro, in vec3 rd, vec3 boxSize, out vec3 outNormal) {
         return vec2(-1.0); // no intersection
     outNormal = -sign(rd) * step(t1.yzx, t1.xyz) * step(t1.zxy, t1.xyz);
     return vec2(tN, tF);
+}
+// ray vs a sphere centered at the origin -> returns the near and far ray
+// parameters where the ray crosses the spehere: a negative .y means the sphere
+// is behind the ray or missed entirely. Assumes rd is normalized
+vec2 sphereIntersection(vec3 ro, vec3 rd, float radius) {
+	// ray param of the point that passes closest to the spere center
+	float tClosest = -dot(ro, rd);
+
+	float distSq = dot(ro, ro) - tClosest * tClosest;
+	float radiusSq = radius * radius;
+	if (distSq > radiusSq) return vec2(-1.0); // ray misses the sphere
+
+	// ray cuts a line thorugh the sphere and get half its length
+	// Chord = line that cuts thorugh sphere, connecting two points
+	float halfChord = sqrt(radiusSq - distSq);
+	return vec2(tClosest - halfChord, tClosest + halfChord);
 }
 
 // ==========================================================================================
