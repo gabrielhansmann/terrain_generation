@@ -79,13 +79,12 @@ void main() {
         vec3 sun = rot * normalize(vec3(-1.0, 0.15, 0.25));
     #endif
 
-    vec3 fogColor = 1.0 - exp(-SkyColor(rd, sun) * 2.0);
 
     vec3 color;
 
     if (t < 0.0) {
-        // Sky
-        color = fogColor * (1.0 + pow(gl_FragCoord.y / iResolution.y, 3.0) * 3.0) * 0.5;
+        // planet sits in space -> background is black
+        color = vec3(0.0);
         #if SHOW_NORMALS
             color = vec3(0.5, 0.5, 1.0);
         #endif
