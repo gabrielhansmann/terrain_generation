@@ -37,14 +37,13 @@ target_link_libraries(imgui PRIVATE glfw)
 # Main Executable
 add_executable(${PROJECT_NAME}
     src/main.cpp
-    src/utils/shaders.cpp
-    src/perlin_noise.cpp
-	src/compute_pass.cpp
-	src/framebuffer.cpp
-    src/ui.cpp
-	src/terrain_mesh.cpp
-	src/utils/orbit_camera.cpp
-	src/cube_sphere_mesh.cpp
+    src/engine/shaders.cpp
+    src/engine/perlin_noise.cpp
+	src/engine/compute_pass.cpp
+	src/engine/framebuffer.cpp
+    src/app/ui.cpp
+	src/app/orbit_camera.cpp
+	src/planet/cube_sphere_mesh.cpp
 )
 
 # Linking and Includes

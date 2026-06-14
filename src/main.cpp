@@ -1,15 +1,14 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <vector>
-#include "cube_sphere_mesh.h"
+#include "planet/cube_sphere_mesh.h"
 #include "glm/matrix.hpp"
-#include "utils/shaders.h"
-#include "utils/orbit_camera.h"
-#include "perlin_noise.h"
-#include "compute_pass.h"
-#include "framebuffer.h"
-#include "terrain_mesh.h"
-#include "ui.h"
+#include "engine/shaders.h"
+#include "app/orbit_camera.h"
+#include "engine/perlin_noise.h"
+#include "engine/compute_pass.h"
+#include "engine/framebuffer.h"
+#include "app/ui.h"
 
 static int SCREEN_W = 960, SCREEN_H = 540;
 static float mouseX = 0, mouseY = 0;
@@ -58,14 +57,14 @@ int main() {
 	std::string shaderDefines = ui.buildShaderDefines(shaderSettings);
 	ReloadPrograms(progGBuffer, progLighting, shaderDefines);
 
-	GLuint progDebugFace = LoadShaders("shaders/fullscreen.vert", "shaders/debug_cubemap_face.frag");
-	GLuint progWireframe = LoadShadersWithDefines("shaders/terrain.vert", "shaders/wireframe.frag", shaderDefines);
+	GLuint progDebugFace = LoadShaders("shaders/fullscreen.vert", "shaders/planet/debug_cubemap_face.frag");
+	GLuint progWireframe = LoadShadersWithDefines("shaders/planet/terrain.vert", "shaders/planet/wireframe.frag", shaderDefines);
 
 	// erosion pass: a generated float cubemap, height looked up by direction
-	ComputePass erosionPass(1024, 1024, "shaders/erosion.comp", ComputePassTextureType::CubeMapGenerated, nullptr, shaderDefines);
+	ComputePass erosionPass(1024, 1024, "shaders/planet/erosion.comp", ComputePassTextureType::CubeMapGenerated, nullptr, shaderDefines);
 
 	// detail pass: static 2D noise, still sampled flat until the mesh goes spherical
-	ComputePass detailPass(1024, 1024, "shaders/detail.comp", ComputePassTextureType::Texture2D, nullptr, shaderDefines);
+	ComputePass detailPass(1024, 1024, "shaders/planet/detail.comp", ComputePassTextureType::Texture2D, nullptr, shaderDefines);
 
 	//	G-buffer
 	Framebuffer gbuffer(SCREEN_W, SCREEN_H, 4);

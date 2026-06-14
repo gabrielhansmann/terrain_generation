@@ -1,5 +1,5 @@
 #include "compute_pass.h"
-#include "utils/shaders.h"
+#include "engine/shaders.h"
 #include <iostream>
 
 ComputePass::ComputePass(

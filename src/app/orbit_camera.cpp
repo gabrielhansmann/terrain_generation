@@ -1,5 +1,5 @@
 #include "orbit_camera.h"
-#include "../ui.h"
+#include "ui.h"
 #include "glm/common.hpp"
 #include "glm/ext/matrix_clip_space.hpp"
 #include "glm/ext/matrix_transform.hpp"
