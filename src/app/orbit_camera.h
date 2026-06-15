@@ -14,6 +14,7 @@ class OrbitCamera {
 		glm::mat4 projMatrix() const { return m_proj; }
 		glm::mat4 viewProjMatrix() const { return m_proj * m_view; }
 		glm::vec3 position() const { return m_position; }
+		void zoom(float scrollTicks);
 	private:
 		float m_azimuth = 0.0f;
         float m_elevation = -0.3f;

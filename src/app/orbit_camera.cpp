@@ -8,6 +8,13 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <cmath>
 
+void OrbitCamera::zoom(float scrollTicks) {
+	const float zoomPerTick = 0.9f;
+	const float minDistance = 1.07f;
+	const float maxDistance = 8.0f;
+	m_distance *= powf(zoomPerTick, scrollTicks);
+	m_distance = glm::clamp(m_distance, minDistance, maxDistance);
+}
 void OrbitCamera::update(float time, float mouseX, float mouseY, bool mouseDown,
                           int screenW, int screenH, const ShaderSettings& s) {
 	const float sensitivity = 0.005f; // radians of orbit per pixel dragged
@@ -44,7 +51,7 @@ void OrbitCamera::update(float time, float mouseX, float mouseY, bool mouseDown,
 	m_position = target + rotation * glm::vec3(0.0f, 0.0f, m_distance);
 	glm::vec3 up = rotation * glm::vec3(0.0f, 1.0f, 0.0f);
 
-	float fov = 45.0f; // wide enough to frame the whole radius-1 planet at distance 3 -> expose to options later!
+	float fov = 60.0f; // wide enough to frame the whole radius-1 planet at distance 3 -> expose to options later!
 	float aspect = screenH > 0 ? (float)screenW / (float)screenH : 1.0f;
 	m_view = glm::lookAt(m_position, target , up);
 	m_proj = glm::perspective(glm::radians(fov), aspect, 0.01f, 10.0f);

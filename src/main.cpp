@@ -19,6 +19,11 @@ static void mouseButtonCB(GLFWwindow*, int btn, int action, int) {
 		mouseDown = (action == GLFW_PRESS);
 }
 
+static float scrollAccum = 0.0f;
+static void scrollCB(GLFWwindow*, double, double yoffset) {
+	scrollAccum += (float)yoffset;	
+}
+
 static void drawFullscreen() {
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 }
@@ -40,6 +45,7 @@ int main() {
     glfwMakeContextCurrent(window);
     // Needed so the shader's `iMouse.z > 0.5` orbit-camera branch ever fires.
     glfwSetMouseButtonCallback(window, mouseButtonCB);
+	glfwSetScrollCallback(window, scrollCB);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         return -1;
@@ -121,6 +127,9 @@ int main() {
 
 		detailPass.dispatch();
 		erosionPass.dispatch();
+
+		camera.zoom(scrollAccum);
+		scrollAccum = 0.0f;
 		camera.update(t, mouseX, mouseY, mouseDown, SCREEN_W, SCREEN_H, shaderSettings);
 
 		// Pass 1 - G-buffer: rasterize mesh + material 
