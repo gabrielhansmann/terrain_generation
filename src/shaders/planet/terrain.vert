@@ -19,8 +19,9 @@ void main() {
 	float height = textureLod(iChannel0, aDir, 0.0).x;
 
 	// lift the vertex out from the planet center along its own direction: a base
-	// sphere of PLANET_RADIUS (common.glsl) within a thin height shell on top.
+	// sphere of PLANET_RADIUS (common.glsl) within a thin height shell on top, 
+	// that is anchored to the sea-level -> WATER_HEIGHT.
 	// HEIGHT_SCALE (common.glsl) stays small so relief reads as terrain
-	vWorldPos = aDir * (PLANET_RADIUS + height * HEIGHT_SCALE);
+	vWorldPos = aDir * (PLANET_RADIUS + (height - WATER_HEIGHT) * HEIGHT_SCALE);
 	gl_Position = uViewProj * vec4(vWorldPos, 1.0);
 }

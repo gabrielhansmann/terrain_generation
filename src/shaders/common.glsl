@@ -118,14 +118,14 @@ void AnimateLoHi(inout float current, float lo, float hi, float time) {
 //#define BUFFER_SIZE vec2(min(min(iResolution.x, iResolution.y), 768.0))
 #define BUFFER_SIZE vec2(1024.0)
 #define PLANET_RADIUS 1.0
-#define HEIGHT_SCALE 0.06
-#define ATMOSPHERE_HEIGHT 0.1 // how far the atmosphere is above the surface in planet radii
+#define HEIGHT_SCALE 0.08
+#define ATMOSPHERE_HEIGHT 0.09 // how far the atmosphere is above the surface in planet radii
 // sacle heights: the altitude over which each scattering type thins out. 
 // Mie (haze, dust) hugs the surface; Rayleight (the blue of the sky) reaches higher.
 // ratios taken from dimev's HEIGHT_RAY=8e3 / HEIGHT_MIE=1.2e3 over a 100e3-thick
 // atmosphere (atmosphere.glsl:72-73), rescaled to our shell.
 // -> https://github.com/Dimev/atmospheric-scattering-explained / https://www.shadertoy.com/view/wlBXWK
-#define HEIGHT_RAYLEIGH (ATMOSPHERE_HEIGHT * 0.15)
+#define HEIGHT_RAYLEIGH (ATMOSPHERE_HEIGHT * 0.08)
 #define HEIGHT_MIE (ATMOSPHERE_HEIGHT * 0.012)
 // The ozon layer sits in a band at mid altitude, not ground. Peak and width as Dimevs
 // 30e3 / 4e3 over a 100e3 atmosphere (atmosphere.glsl:74-75)
@@ -134,7 +134,7 @@ void AnimateLoHi(inout float current, float lo, float hi, float time) {
 // particle-count multiplier. World is measured in planet radii (~1) but the 
 // scattering coefficients are tuned for metres, so this rescales the air into
 // a visible thickness. The single know for "how hazy the planet looks"
-#define ATMOSPHERE_DENSITY 1e6
+#define ATMOSPHERE_DENSITY 3e6
 #define SUN_INTENSITY 25.0
 // sun disc geometry in radians. SIZE is the angular radius of the bright core,
 // SOFTNESS is the width of the blurred rim added outside it

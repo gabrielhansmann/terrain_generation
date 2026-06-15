@@ -17,7 +17,7 @@ struct ShaderSettings {
 
 	bool useAutoLowAngle = true;
 	bool lowAngle = false;
-	bool useAnimatedWaterHeight = true;
+	bool useAnimatedWaterHeight = false;
 	bool useAutoScrollOffset = true;
 
 	float waterHeight = 0.36f;
