@@ -84,7 +84,10 @@ void main() {
 
     if (t < 0.0) {
         // planet sits in space -> background is black
-        color = vec3(0.0);
+		// angle between eye ray and sun in radians
+		float sunAngle = acos(clamp(dot(rd, sun), -1.0, 1.0));
+		float sunDisc = 1.0 - smoothstep(SUN_DISC_SIZE * (1.0 - SUN_DISC_SOFTNESS), SUN_DISC_SIZE, sunAngle);
+        color = SUN_COLOR * SUN_INTENSITY * sunDisc;
         #if SHOW_NORMALS
             color = vec3(0.5, 0.5, 1.0);
         #endif

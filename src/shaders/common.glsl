@@ -136,6 +136,10 @@ void AnimateLoHi(inout float current, float lo, float hi, float time) {
 // a visible thickness. The single know for "how hazy the planet looks"
 #define ATMOSPHERE_DENSITY 1e6
 #define SUN_INTENSITY 25.0
+// sun disc geometry in radians. SIZE is the angular radius of the bright core,
+// SOFTNESS is the width of the blurred rim added outside it
+#define SUN_DISC_SIZE 0.02
+#define SUN_DISC_SOFTNESS 0.3
 #define DISCARD_MAP (fragCoord.x >= BUFFER_SIZE.x || fragCoord.y >= BUFFER_SIZE.y)
 #define TIME_SCROLL_OFFSET_INT (round(TIME_SCROLL_OFFSET * BUFFER_SIZE) / BUFFER_SIZE)
 #define TIME_SCROLL_OFFSET_FRAC (TIME_SCROLL_OFFSET - TIME_SCROLL_OFFSET_INT)
