@@ -65,6 +65,7 @@ int main() {
 
 	GLuint progDebugFace = LoadShaders("shaders/fullscreen.vert", "shaders/planet/debug_cubemap_face.frag");
 	GLuint progWireframe = LoadShadersWithDefines("shaders/planet/terrain.vert", "shaders/planet/wireframe.frag", shaderDefines);
+	GLuint progWater = LoadShadersWithDefines("shaders/planet/water.vert", "shaders/planet/water_gbuffer.frag", shaderDefines);
 
 	// erosion pass: a generated float cubemap, height looked up by direction
 	ComputePass erosionPass(1024, 1024, "shaders/planet/erosion.comp", ComputePassTextureType::CubeMapGenerated, nullptr, shaderDefines);
@@ -167,8 +168,13 @@ int main() {
 			1.0f, 1.0f, 1.0f,
 		};
 		glUniform3fv(glGetUniformLocation(progGBuffer, "iChannelResolution[0]"), 4, ichRes);
+		terrainMesh.draw(); // draw land first
 
-		terrainMesh.draw();
+		// second pass into same G-Buffer: water shell. depth test still on
+		glUseProgram(progWater);
+		glUniformMatrix4fv(glGetUniformLocation(progWater, "uViewProj"), 1, GL_FALSE, &vp[0][0]);
+		glUniform3fv(glGetUniformLocation(progWater, "uCamPos"), 1, &camPos[0]);
+		terrainMesh.draw(); // same mesh, water.vert at PLANET_RADIUS
 		glDisable(GL_DEPTH_TEST);
 		gbuffer.unbind();
 

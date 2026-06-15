@@ -20,7 +20,7 @@ struct ShaderSettings {
 	bool useAnimatedWaterHeight = false;
 	bool useAutoScrollOffset = true;
 
-	float waterHeight = 0.36f;
+	float waterHeight = 0.47f;
 	float fogHeight = 0.465f;
 	float grassHeight = 0.465f;
 	float drainageWidth = 0.3f;
