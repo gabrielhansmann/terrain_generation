@@ -174,6 +174,9 @@ int main() {
 		glUseProgram(progWater);
 		glUniformMatrix4fv(glGetUniformLocation(progWater, "uViewProj"), 1, GL_FALSE, &vp[0][0]);
 		glUniform3fv(glGetUniformLocation(progWater, "uCamPos"), 1, &camPos[0]);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, erosionPass.texture());
+		glUniform1i(glGetUniformLocation(progWater, "iChannel0"), 0);
 		terrainMesh.draw(); // same mesh, water.vert at PLANET_RADIUS
 		glDisable(GL_DEPTH_TEST);
 		gbuffer.unbind();
