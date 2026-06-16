@@ -375,7 +375,7 @@ vec4 Heightmap(vec3 dir, int face, vec2 uv) {
 	// Turn 3D gradient into 3D slope in the face char by projecting onto
 	// face tangents: directions u and v push dir along the sphere, the
 	// cube->sphere map is smooth
-	float eps = 1.0 / 1024.0; // one texel;
+	float eps = 1.0 / float(imageSize(uHeightmap).x); // one texel in uv, whatever the face resoltion (later zoom in / tile streaming)
 	vec3 tangentU = (cubeFaceDir(face, uv + vec2(eps, 0.0)) - dir) / eps;
 	vec3 tangentV = (cubeFaceDir(face, uv + vec2(0.0, eps)) - dir) / eps;
 	vec2 slope = vec2(dot(gradDir, tangentU), dot(gradDir, tangentV));
