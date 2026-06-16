@@ -63,6 +63,87 @@ vec3 noised(in vec2 p) {
         ga + u.x * (gb - ga) + u.y * (gc - ga) + u.x * u.y * (ga - gb - gc + gd) +
         du * (u.yx * (va - vb - vc + vd) + vec2(vb, vc) - va));
 }
+// 3D variant of hash(vec2): mapps a lattice corner to a random gradient in [-1,1]^3
+// The same corner always returns the same vector which is what lets neighbouring cells
+// line up into continuous noise
+// This hash function is from https://www.shadertoy.com/view/4djSRW, just mapped frpm
+// [0,1] to [-1,1].
+vec3 hash3(in vec3 p3) {
+	p3 = fract(p3 * vec3(.1031, .1030, .0973));
+    p3 += dot(p3, p3.yxz+33.33);
+    return -1.0 + 2.0 * fract((p3.xxy + p3.yxx)*p3.zyx);
+}
+// Inigo Quilez version may be faster but less robust, check 
+// https://iquilezles.org/articles/gradientnoise/ and
+// https://www.shadertoy.com/view/4dffRH
+
+// Analytic gradient noise in3D: value in .x its exact gradient (d/dx,d/dy,d/dz)
+// in .yzw. We need the gradient since erosion filter carves gullies down-slope
+// so it must know the slope of the base terrain. Reference implementation
+// from Inigo Quilez, https://www.shadertoy.com/view/4dffRH, refactored here
+// for better readablility.
+vec4 noised3(in vec3 p) {
+	vec3 cell = floor(p);
+	vec3 f = fract(p);
+
+	// Quintic fade: zero 1st and 2nd derivative at 0 and 1
+	// fadeSlope = d(fade)/df
+	vec3 fade = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+	vec3 fadeSlope = 30.0 * f * f * (f * (f - 2.0) + 1.0);
+
+	// random gradient at each of the 8 cube corners
+	vec3 gradA = hash3(cell + vec3(0.0, 0.0, 0.0));
+    vec3 gradB = hash3(cell + vec3(1.0, 0.0, 0.0));
+    vec3 gradC = hash3(cell + vec3(0.0, 1.0, 0.0));
+    vec3 gradD = hash3(cell + vec3(1.0, 1.0, 0.0));
+    vec3 gradE = hash3(cell + vec3(0.0, 0.0, 1.0));
+    vec3 gradF = hash3(cell + vec3(1.0, 0.0, 1.0));
+    vec3 gradG = hash3(cell + vec3(0.0, 1.0, 1.0));
+    vec3 gradH = hash3(cell + vec3(1.0, 1.0, 1.0));
+
+	// Each corners contribution: its gradient dotted with the vector
+	// from the corner to out point. Zero at corner, linear ramp away from it
+	float dotA = dot(gradA, f - vec3(0.0, 0.0, 0.0));
+    float dotB = dot(gradB, f - vec3(1.0, 0.0, 0.0));
+    float dotC = dot(gradC, f - vec3(0.0, 1.0, 0.0));
+    float dotD = dot(gradD, f - vec3(1.0, 1.0, 0.0));
+    float dotE = dot(gradE, f - vec3(0.0, 0.0, 1.0));
+    float dotF = dot(gradF, f - vec3(1.0, 0.0, 1.0));
+    float dotG = dot(gradG, f - vec3(0.0, 1.0, 1.0));
+    float dotH = dot(gradH, f - vec3(1.0, 1.0, 1.0));
+
+	// Value: trilinear blend of the 8 contributions, weighted by fade
+	float value =
+        dotA +
+        fade.x * (dotB - dotA) +
+        fade.y * (dotC - dotA) +
+        fade.z * (dotE - dotA) +
+        fade.x * fade.y * (dotA - dotB - dotC + dotD) +
+        fade.y * fade.z * (dotA - dotC - dotE + dotG) +
+        fade.z * fade.x * (dotA - dotB - dotE + dotF) +
+        fade.x * fade.y * fade.z * (-dotA + dotB + dotC - dotD + dotE - dotF - dotG + dotH);
+
+	// Gradient = d(value)/dp, by the product rule in two parts
+	vec3 gradient =
+        // part 1: the same blend, but of the corner GRADIENT vectors.
+        gradA +
+        fade.x * (gradB - gradA) +
+        fade.y * (gradC - gradA) +
+        fade.z * (gradE - gradA) +
+        fade.x * fade.y * (gradA - gradB - gradC + gradD) +
+        fade.y * fade.z * (gradA - gradC - gradE + gradG) +
+        fade.z * fade.x * (gradA - gradB - gradE + gradF) +
+        fade.x * fade.y * fade.z * (-gradA + gradB + gradC - gradD + gradE - gradF - gradG + gradH) +
+        // part 2: how the fade weights themselves shift across the cube.
+        fadeSlope * (
+            vec3(dotB - dotA, dotC - dotA, dotE - dotA) +
+            fade.yzx * vec3(dotA - dotB - dotC + dotD, dotA - dotC - dotE + dotG, dotA - dotB - dotE + dotF) +
+            fade.zxy * vec3(dotA - dotB - dotE + dotF, dotA - dotB - dotC + dotD, dotA - dotC - dotE + dotG) +
+            fade.yzx * fade.zxy * (-dotA + dotB + dotC - dotD + dotE - dotF - dotG + dotH));
+
+    return vec4(value, gradient);
+
+}
 
 // ---- following functions copied from buffer_a.frag
 
@@ -267,39 +348,43 @@ vec3 FractalNoise(vec2 p, float freq, int octaves, float lacunarity, float gain)
     return n;
 }
 
-// ---- heightmap (buffer_a.frag Heightmap(), de-animated)
-// step 1 (base terrain): FractalNoise builds smooth rolling landscape using summed
-//		octaves of gradient noise (https://www.shadertoy.com/view/XdXBRH). 
-//		Each octave adds detail at higher frequency and lower amplitude: 
-//		outpout in n.x, slope in n.yz
+#include "cube_face.glsl"
 
-// step 2 (fadeTarget): from the pre-erosion height: -1 = valley, +1 = ridge.
-//		ErosionFilter uses it to decide whether gullies should fade toward valley
-//		or the ridgeline.
+// 3D twin of FactalNoise: sums octaves of noised3 sampled by direction
+vec4 FractalNoise3(vec3 p, float freq, int octaves, float lacunarity, float gain) {
+    vec4 n = vec4(0.0);
+    float nf = freq;
+    float na = 1.0;
+    for (int i = 0; i < octaves; i++) {
+        n += noised3(p * nf) * na * vec4(1.0, nf, nf, nf);
+        na *= gain;
+        nf *= lacunarity;
+    }
+    return n;
+}
 
-// step 3 (remap height from [-1,1] to [0,1]: n.yz (slope) is kepts as-is
-//		since ErosionFilter needs it in the same coordinate space
+// Base terrain is now sampled in 3D by surface direction so it cannot pinch at poles
+// or mirror across hemispheres. Erosion filter still marches a flat 2D chart
+// for which we use this cubes own (u,v)
+vec4 Heightmap(vec3 dir, int face, vec2 uv) {
+	// Base height and its 3D gradient sampled by direction
+    vec4 base = FractalNoise3(dir, HEIGHT_FREQUENCY, HEIGHT_OCTAVES, HEIGHT_LACUNARITY, HEIGHT_GAIN) * HEIGHT_AMP;
+	float height = base.x;
+	vec3 gradDir = base.yzw; // d(height)/d(dir)
 
-// setp 4 (ErosionFilter): Runs PhacelleNoise (https://www.shadertoy.com/view/t3dyWl) 
-//		in multiple octaves, each aligned to current slope direction. Each octave
-//		carves gullies into the terrain and updates slope for the next octave,
-//		producing a coherent drainage network rather than random scratches
-//		Output: height delta h.x, slope delta h.yz, total magnitude h.w and
-//		ridgeMap (crease=-1, ridge=+1).
+	// Turn 3D gradient into 3D slope in the face char by projecting onto
+	// face tangents: directions u and v push dir along the sphere, the
+	// cube->sphere map is smooth
+	float eps = 1.0 / 1024.0; // one texel;
+	vec3 tangentU = (cubeFaceDir(face, uv + vec2(eps, 0.0)) - dir) / eps;
+	vec3 tangentV = (cubeFaceDir(face, uv + vec2(0.0, eps)) - dir) / eps;
+	vec2 slope = vec2(dot(gradDir, tangentU), dot(gradDir, tangentV));
 
-// step 5 (height offset): shift the whole terrain slightly up or down based on
-//		erosion magnitude to preserve average elevation after carving.
-
-// step 6 (store): the four terrain values are written one per channel of the
-//		RGBA32F texel: height in x, erosion delta in y, ridgemap in z, trees in
-//		w. Seperate channels let a samplerCube read and blend each value with 
-// 		one texture lookup instead of bit-packing a single float and unpacking it
-
-vec4 Heightmap(vec2 p) {
-    vec3 n = FractalNoise(p, HEIGHT_FREQUENCY, HEIGHT_OCTAVES, HEIGHT_LACUNARITY, HEIGHT_GAIN) * HEIGHT_AMP * vec3(1.0, 1.0, 1.0);
+	vec2 p = uv; // chard coordinate the filter marches
+	vec3 n = vec3(height, slope); // height + slope in that chart
 
     float fadeTarget = clamp(n.x / (HEIGHT_AMP * 0.6), -1.0, 1.0);
-	n = n * 0.5 + vec3(0.5, 0.0, 0.0);
+	n = n * 0.5 + vec3(0.5, 0.0, 0.0); // remap height to [0,1]; slope scales with it
 
 	float ridgeMap, debug; // debug is kept to match its upstream signature
 	vec4 h = ErosionFilter(
@@ -320,10 +405,8 @@ vec4 Heightmap(vec2 p) {
 
 	// one value per channel -> a samplerCube reads these 
 	return vec4(eroded, erosionDelta, ridge, trees);
-
 }
 
-#include "cube_face.glsl"
 
 // ---- entry point 
 
@@ -335,11 +418,7 @@ void main() {
 	vec2 uv = (vec2(texel) + 0.5) / vec2(size);
 	vec3 dir = cubeFaceDir(uFace, uv);
 
-	// The terrain is still generated by a flat 2D heightmap.
-	// To wrap it onto the sphere, sample that flat field at the XZ shadow
-	// of the surface direction. The four side faces wrap cleanly; the two
-	// pole faces pinch to a point since every direction near a pole has almost
-	// the same XZ. A heightmap generated directly in sphere space removes that
-	// pinch later
-	imageStore(uHeightmap, texel, Heightmap(dir.xz));
+	// Base terrain is sampled directly in sphere space (by direction)
+	// The erosion filter runs in this face's (u,v) chart.
+	imageStore(uHeightmap, texel, Heightmap(dir, uFace, uv));
 }
