@@ -115,6 +115,17 @@ void main() {
 			diffuseColor = mix(diffuseColor, vec3(1.0), drainage);
 		#endif
 	#endif
+	// Mark pixels near cube-face edge so the per-face erosion seams show
+	#if SHOW_SEAMS
+		vec3 a = abs(dir);
+		float largest = max(a.x, max(a.y, a.z));
+		float smallest = min(a.x, min(a.y, a.z));
+		float middle = a.x + a.y + a.z - largest - smallest;
+		float distToEdge = 1.0 - middle / largest; // 0 at the seam
+		float seamBand = 6.0 * (2.0 / BUFFER_SIZE.x); // ~6 texels wide
+		diffuseColor = mix(vec3(1.0, 0.0, 1.0), diffuseColor, smoothstep(0.0, seamBand, distToEdge));
+    #endif
+		
 
     // Color used when grayscale debug option is used:
     gAlbedoOcclusion = vec4(diffuseColor, occlusion);
