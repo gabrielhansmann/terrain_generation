@@ -54,7 +54,6 @@ void AnimateLoHi(inout float current, float lo, float hi, float time) {
 // -----------------------------------------------------------------------------
 
 // Renderer settings (injected)
-// #define SHADOWS 1
 // #define FIXED_SUN 1
 // #define WATER 1
 // #define WATER_HEIGHT (0.36 + 0.1 * (smoothstep(54.0, 60.0, mod(iTime, 120.0)) - smoothstep(114.0, 120.0, mod(iTime, 120.0))))

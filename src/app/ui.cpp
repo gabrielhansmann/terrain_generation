@@ -58,7 +58,6 @@ bool Ui::renderOptions(ShaderSettings& settings, GLuint cubeFaceTex) {
 
 	if (ImGui::CollapsingHeader("Renderer", ImGuiTreeNodeFlags_DefaultOpen)) {
 		shaderDirty |= ImGui::Checkbox("Animate parameters", &settings.animateParameters);
-		shaderDirty |= ImGui::Checkbox("Shadows", &settings.shadows);
 		shaderDirty |= ImGui::Checkbox("Fixed sun", &settings.fixedSun);
 		shaderDirty |= ImGui::Checkbox("Water", &settings.water);
 		shaderDirty |= ImGui::Checkbox("Drainage", &settings.drainage);
@@ -152,7 +151,6 @@ std::string Ui::buildShaderDefines(const ShaderSettings& s) const {
 
 	out << "#define ANIMATE_PARAMETERS " << (s.animateParameters ? 1 : 0) << "\n";
 
-	out << "#define SHADOWS " << (s.shadows ? 1 : 0) << "\n";
 	out << "#define FIXED_SUN " << (s.fixedSun ? 1 : 0) << "\n";
 	out << "#define WATER " << (s.water ? 1 : 0) << "\n";
 	out << "#define DRAINAGE " << (s.drainage ? 1 : 0) << "\n";

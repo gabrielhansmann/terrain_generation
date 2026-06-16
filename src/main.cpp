@@ -230,11 +230,6 @@ int main() {
 		glBindTexture(GL_TEXTURE_2D, gbuffer.texture(3));
 		glUniform1i(glGetUniformLocation(progLighting, "gDepth"), 3);
 
-		// heightmap for shadow and reflection marches
-		glActiveTexture(GL_TEXTURE4);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, erosionPass.texture());
-		glUniform1i(glGetUniformLocation(progLighting, "iChannel0"), 4);
-
 		// dither
 		glActiveTexture(GL_TEXTURE5);
 		glBindTexture(GL_TEXTURE_2D, texDither);

@@ -4,7 +4,6 @@
 uniform vec3 iResolution;
 uniform float iTime;
 uniform vec4 iMouse;
-uniform sampler2D iChannel0; // heightmap — needed for shadow and reflection marches
 uniform sampler2D iChannel2; // dither noise
 uniform vec3 iChannelResolution[4];
 
@@ -17,8 +16,6 @@ uniform vec3 uCamPos;
 uniform mat4 uInvViewProj;
 
 out vec4 FragColor;
-
-#include "terrain.glsl"
 
 void main() {
     // ------------------------------------------------------------------------
@@ -99,17 +96,6 @@ void main() {
 
         float shadow = 1.0;
 
-        #if SHADOWS
-            if (material != M_STRATA) {
-                // Shadow ray
-                vec3 foo;
-                float s_t;
-                int s_material;
-                march(pos + vec3(0.0, 1.0, 0.0) * 1e-4, sun, foo, s_material, s_t);
-                shadow = 1.0 - exp(-s_t * 20.0);
-            }
-        #endif
-
         // Sky light is sunlight scattered through the air, so it only reaches
 		// the day side and the twilight band near the terminator. The night 
 		// face turns away from the lit atmosphere and goes dark. Without this
@@ -124,14 +110,6 @@ void main() {
         color += diffuseColor * SUN_COLOR
             * (dot(normal, sun * vec3(1.0, -1.0, 1.0)) * 0.5 + 0.5)
             * Fd_Lambert() / PI;
-        // Reflection
-		// Only shiny surfaces reflect and since water is pushed to later, skip
-		// this for now (also keeps flat-box march from running one terrain
-		// becomes a sphere)
-		// if (smoothness > 0.0) {
-		// 	color += GetReflection(pos, r, sun, smoothness)
-		// 		* F_Schlick(f0, dot(-rd, normal));
-		// }
 
         #if SHOW_DIFFUSE
             color = pow(diffuseColor, vec3(1.0 / 2.2));

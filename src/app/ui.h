@@ -7,7 +7,6 @@ struct GLFWwindow;
 
 struct ShaderSettings {
 	bool animateParameters = true;
-	bool shadows = true;
 	bool fixedSun = true;
 	bool water = true;
 	bool drainage = true;
