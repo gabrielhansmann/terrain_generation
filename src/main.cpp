@@ -60,12 +60,12 @@ int main() {
 	ShaderSettings shaderSettings;
 	GLuint progGBuffer = 0;
 	GLuint progLighting = 0;
+	GLuint progWater = 0;
 	std::string shaderDefines = ui.buildShaderDefines(shaderSettings);
-	ReloadPrograms(progGBuffer, progLighting, shaderDefines);
+	ReloadPrograms(progGBuffer, progLighting, progWater, shaderDefines);
 
 	GLuint progDebugFace = LoadShaders("shaders/fullscreen.vert", "shaders/planet/debug_cubemap_face.frag");
 	GLuint progWireframe = LoadShadersWithDefines("shaders/planet/terrain.vert", "shaders/planet/wireframe.frag", shaderDefines);
-	GLuint progWater = LoadShadersWithDefines("shaders/planet/water.vert", "shaders/planet/water_gbuffer.frag", shaderDefines);
 
 	// erosion pass: a generated float cubemap, height looked up by direction
 	ComputePass erosionPass(1024, 1024, "shaders/planet/erosion.comp", ComputePassTextureType::CubeMapGenerated, nullptr, shaderDefines);
@@ -131,7 +131,7 @@ int main() {
 
 		camera.zoom(scrollAccum);
 		scrollAccum = 0.0f;
-		camera.update(t, mouseX, mouseY, mouseDown, SCREEN_W, SCREEN_H, shaderSettings);
+		camera.update(t, mouseX, mouseY, mouseDown, SCREEN_W, SCREEN_H);
 
 		// Pass 1 - G-buffer: rasterize mesh + material 
 		gbuffer.bind();
@@ -143,6 +143,9 @@ int main() {
 		// all attachments to 0
 		glClearBufferfv(GL_COLOR, 3, skyDepth); // attachment 3 = gDepth
 		glEnable(GL_DEPTH_TEST);
+		// planet is a closed solid, triangles facing away from camera are never
+		// visible -> cull them to skip G-buffer frag work
+		glEnable(GL_CULL_FACE);
 		glUseProgram(progGBuffer);
 		glUniform3f(glGetUniformLocation(progGBuffer, "iResolution"), (float)SCREEN_W, (float)SCREEN_H, 1.0f);
 		glUniform1f(glGetUniformLocation(progGBuffer, "iTime"), t);
@@ -179,6 +182,7 @@ int main() {
 		glUniform1i(glGetUniformLocation(progWater, "iChannel0"), 0);
 		terrainMesh.draw(); // same mesh, water.vert at PLANET_RADIUS
 		glDisable(GL_DEPTH_TEST);
+		glDisable(GL_CULL_FACE);
 		gbuffer.unbind();
 
 		// Pass 2 - screen: plain wireframe, or the full deferred lighting
@@ -260,7 +264,7 @@ int main() {
 		if (shaderDirty)
 			{
 				shaderDefines = ui.buildShaderDefines(shaderSettings);
-				ReloadPrograms(progGBuffer, progLighting, shaderDefines);
+				ReloadPrograms(progGBuffer, progLighting, progWater, shaderDefines);
 				erosionPass.reloadProgram(shaderDefines);
 				detailPass.reloadProgram(shaderDefines);
 			}

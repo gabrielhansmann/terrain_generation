@@ -1,14 +1,11 @@
 #pragma once
 #include "glm/fwd.hpp"
-#include "ui.h"
 #include <glm/glm.hpp>
-
-struct ShaderSettings;
 
 class OrbitCamera {
 	public:
 		void update(float time, float mouseX, float mouseY, bool mouseDown, 
-		int screenW, int screenH, const ShaderSettings& settings);
+		int screenW, int screenH);
 		
 		glm::mat4 viewMatrix() const { return m_view; }
 		glm::mat4 projMatrix() const { return m_proj; }

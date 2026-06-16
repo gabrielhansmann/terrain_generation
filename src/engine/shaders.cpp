@@ -171,15 +171,19 @@ GLuint LoadComputeShaderWithDefines(const char* computePath, const std::string& 
 	return program;
 }
 
-void ReloadPrograms(GLuint& gbufferProgram, GLuint& lightingProgram, const std::string& defines) {
+void ReloadPrograms(GLuint& gbufferProgram, GLuint& lightingProgram, GLuint& waterProgram, const std::string& defines) {
 	GLuint newGBuffer = LoadShadersWithDefines("shaders/planet/terrain.vert", "shaders/planet/terrain_gbuffer.frag", defines);
 	GLuint newLighting = LoadShadersWithDefines("shaders/fullscreen.vert", "shaders/lighting/lighting.frag", defines);
+	GLuint newWater = LoadShadersWithDefines("shaders/planet/water.vert", "shaders/planet/water_gbuffer.frag", defines);
 
 	if (gbufferProgram)
 		glDeleteProgram(gbufferProgram);
 	if (lightingProgram)
 		glDeleteProgram(lightingProgram);
+	if (waterProgram)
+		glDeleteProgram(waterProgram);
 
 	gbufferProgram = newGBuffer;
 	lightingProgram = newLighting;
+	waterProgram = newWater;
 }

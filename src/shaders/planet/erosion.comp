@@ -64,15 +64,6 @@ vec3 noised(in vec2 p) {
         du * (u.yx * (va - vb - vc + vd) + vec2(vb, vc) - va));
 }
 
-float pack4(in vec4 rgba) {
-    lowp int red = clamp(int(rgba.r * 255.0), 0, 255);
-    lowp int green = clamp(int(rgba.g * 255.0), 0, 255);
-    lowp int blue = clamp(int(rgba.b * 255.0), 0, 255);
-    lowp int alpha = clamp(int(rgba.a * 255.0), 0, 255);
-
-    return intBitsToFloat((red << 24) | (green << 16) | (blue << 8) | alpha);
-}
-
 // ---- following functions copied from buffer_a.frag
 
 vec4 PhacelleNoise(in vec2 p, vec2 normDir, float freq, float offset, float normalization) {

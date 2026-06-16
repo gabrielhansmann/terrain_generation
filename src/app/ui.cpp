@@ -63,11 +63,7 @@ bool Ui::renderOptions(ShaderSettings& settings, GLuint cubeFaceTex) {
 		shaderDirty |= ImGui::Checkbox("Drainage", &settings.drainage);
 		shaderDirty |= ImGui::Checkbox("Trees", &settings.trees);
 		shaderDirty |= ImGui::Checkbox("Detail texture", &settings.detailTexture);
-
-		shaderDirty |= ImGui::Checkbox("Animated water height", &settings.useAnimatedWaterHeight);
-		if (!settings.useAnimatedWaterHeight)
-			shaderDirty |= ImGui::SliderFloat("Water height", &settings.waterHeight, 0.0f, 1.0f);
-
+		shaderDirty |= ImGui::SliderFloat("Water height", &settings.waterHeight, 0.0f, 1.0f);
 		shaderDirty |= ImGui::SliderFloat("Fog height", &settings.fogHeight, 0.0f, 1.0f);
 		shaderDirty |= ImGui::SliderFloat("Grass height", &settings.grassHeight, 0.0f, 1.0f);
 		shaderDirty |= ImGui::SliderFloat("Drainage width", &settings.drainageWidth, 0.0f, 2.0f);
@@ -165,12 +161,7 @@ std::string Ui::buildShaderDefines(const ShaderSettings& s) const {
 	out << "#define COMPARISON_SLIDER " << (s.comparisonSlider ? 1 : 0) << "\n";
 	out << "#define SHOW_BUFFER " << (s.showBuffer ? 1 : 0) << "\n";
 	out << "#define SHOW_BUFFER_NR " << s.showBufferNr << "\n";
-
-	if (s.useAnimatedWaterHeight) {
-		out << "#define WATER_HEIGHT (0.36 + 0.1 * (smoothstep(54.0, 60.0, mod(iTime, 120.0)) - smoothstep(114.0, 120.0, mod(iTime, 120.0))))\n";
-	} else {
-		out << "#define WATER_HEIGHT " << s.waterHeight << "\n";
-	}
+	out << "#define WATER_HEIGHT " << s.waterHeight << "\n";
 	out << "#define FOG_HEIGHT " << s.fogHeight << "\n";
 	out << "#define GRASS_HEIGHT " << s.grassHeight << "\n";
 	out << "#define DRAINAGE_WIDTH " << s.drainageWidth << "\n";

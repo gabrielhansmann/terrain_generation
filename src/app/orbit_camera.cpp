@@ -1,5 +1,4 @@
 #include "orbit_camera.h"
-#include "ui.h"
 #include "glm/common.hpp"
 #include "glm/ext/matrix_clip_space.hpp"
 #include "glm/ext/matrix_transform.hpp"
@@ -16,7 +15,7 @@ void OrbitCamera::zoom(float scrollTicks) {
 	m_distance = glm::clamp(m_distance, minDistance, maxDistance);
 }
 void OrbitCamera::update(float time, float mouseX, float mouseY, bool mouseDown,
-                          int screenW, int screenH, const ShaderSettings& s) {
+                          int screenW, int screenH) {
 	const float sensitivity = 0.005f; // radians of orbit per pixel dragged
 	const float maxElevation = 1.5f; // stop short of the poles so "up" never flips
 
