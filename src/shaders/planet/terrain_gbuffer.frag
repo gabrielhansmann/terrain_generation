@@ -125,6 +125,12 @@ void main() {
 		float seamBand = 6.0 * (2.0 / BUFFER_SIZE.x); // ~6 texels wide
 		diffuseColor = mix(vec3(1.0, 0.0, 1.0), diffuseColor, smoothstep(0.0, seamBand, distToEdge));
     #endif
+	// paint the plate partition with a distinct hue per plate, darkened at the boundaries
+	#if SHOW_PLATES
+		vec2 plate = sphericalVoronoi(dir, PLATE_COUNT);
+		vec3 plateColor = 0.5 + 0.5 * cos(plate.x * 2.4 + vec3(0.0, 2.1, 4.2));
+		diffuseColor = plateColor;
+	#endif
 		
 
     // Color used when grayscale debug option is used:

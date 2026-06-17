@@ -46,6 +46,7 @@ bool Ui::renderOptions(ShaderSettings& settings, GLuint cubeFaceTex) {
 		shaderDirty |= ImGui::Checkbox("Show diffuse", &settings.showDiffuse);
 		shaderDirty |= ImGui::Checkbox("Show normals", &settings.showNormals);
 		shaderDirty |= ImGui::Checkbox("Show seams", &settings.showSeams);
+		shaderDirty |= ImGui::Checkbox("Show plates", &settings.showPlates);
 		shaderDirty |= ImGui::Checkbox("Comparison slider", &settings.comparisonSlider);
 		shaderDirty |= ImGui::Checkbox("Show buffer", &settings.showBuffer);
 		shaderDirty |= ImGui::SliderInt("Show buffer index", &settings.showBufferNr, 0, 5);
@@ -160,6 +161,7 @@ std::string Ui::buildShaderDefines(const ShaderSettings& s) const {
 	out << "#define SHOW_DIFFUSE " << (s.showDiffuse ? 1 : 0) << "\n";
 	out << "#define SHOW_NORMALS " << (s.showNormals ? 1 : 0) << "\n";
 	out << "#define SHOW_SEAMS " << (s.showSeams ? 1 : 0) << "\n";
+	out << "#define SHOW_PLATES " << (s.showPlates ? 1 : 0) << "\n";
 	out << "#define COMPARISON_SLIDER " << (s.comparisonSlider ? 1 : 0) << "\n";
 	out << "#define SHOW_BUFFER " << (s.showBuffer ? 1 : 0) << "\n";
 	out << "#define SHOW_BUFFER_NR " << s.showBufferNr << "\n";

@@ -67,6 +67,7 @@ struct ShaderSettings {
 	int showBufferNr = 0;
 	bool wireframe = false;
 	bool showSeams = false;
+	bool showPlates = false;
 	int debugCubeFace = 0;
 	int debugCubeChannel = -1;
 
