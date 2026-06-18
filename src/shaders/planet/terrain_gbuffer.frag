@@ -10,6 +10,7 @@
 // is the sampled height and "up" is the radial direction since pos.y is no longer
 // altitude on a sphere
 #include "common.glsl"
+#include "plates.glsl"
 
 uniform vec3 iResolution;
 uniform float iTime;
