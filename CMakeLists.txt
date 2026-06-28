@@ -44,6 +44,7 @@ add_executable(${PROJECT_NAME}
     src/app/ui.cpp
 	src/app/orbit_camera.cpp
 	src/planet/cube_sphere_mesh.cpp
+	src/planet/terrain_mesh.cpp
 )
 
 # Linking and Includes
