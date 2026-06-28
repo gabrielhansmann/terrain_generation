@@ -68,6 +68,14 @@ ComputePass::~ComputePass() {
 
 void ComputePass::markDirty() { dirty_ = true; }
 
+void ComputePass::setWorldOffset(float x, float y) {
+	if (x == worldOffsetX_ && y == worldOffsetY_)
+		return;
+	worldOffsetX_ = x;
+	worldOffsetY_ = y;
+	dirty_ = true;
+}
+
 void ComputePass::reloadProgram(const std::string& defines) {
 	GLuint newProgram = LoadComputeShaderWithDefines(shaderPath_.c_str(), defines);
 	if (program_)
@@ -80,6 +88,10 @@ void ComputePass::dispatch() {
 	if (!dirty_) return;
 
 	glUseProgram(program_);
+
+	// uWorldOffset only exists in the flat erosion/detail shaders; on the sphere
+	// erosion shader the location is -1 and this is a harmless no-op.
+	glUniform2f(glGetUniformLocation(program_, "uWorldOffset"), worldOffsetX_, worldOffsetY_);
 
 	// a grid of 8x8 texel work groups covering the entire texture. Ceil division
 	// covers every texel when the size isn't a multiple of 8; the shader's bounds

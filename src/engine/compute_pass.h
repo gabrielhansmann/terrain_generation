@@ -28,6 +28,9 @@ class ComputePass {
 		// GPU work is done when dirty flag is set true
 		// dispatch() checks the flag and does GPU work
 		void markDirty();
+		// Set the world-space noise offset (uWorldOffset). Marks dirty only when
+		// the value actually changes, so a steady offset never forces a redispatch.
+		void setWorldOffset(float x, float y);
 		void dispatch();
 		void reloadProgram(const std::string& defines);
 		GLuint texture() const {
@@ -41,4 +44,5 @@ class ComputePass {
 		ComputePassTextureType textureType_ = ComputePassTextureType::Texture2D;
 		GLenum imageFormat_ = GL_RGBA32F;
 		bool dirty_ = true;
+		float worldOffsetX_ = 0.0f, worldOffsetY_ = 0.0f;
 };
