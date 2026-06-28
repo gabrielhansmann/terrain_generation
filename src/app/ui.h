@@ -6,6 +6,8 @@
 struct GLFWwindow;
 
 struct ShaderSettings {
+	int projectionMode = 0; // 0 = sphere (cube-sphere), 1 = flat plane
+	bool endlessRunner = false; // flat-mode free camera + infinitely scrolling terrain
 	bool animateParameters = true;
 	bool fixedSun = true;
 	bool water = true;
