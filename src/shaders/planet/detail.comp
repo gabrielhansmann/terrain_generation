@@ -3,6 +3,10 @@
 layout(local_size_x = 8, local_size_y = 8) in;
 layout(rgba32f, binding = 0) uniform image2D uDetail;
 
+// Matches erosion_flat.comp so the detail breakup scrolls with the terrain in
+// the endless-runner. (0,0) reproduces the historical static detail noise.
+uniform vec2 uWorldOffset;
+
 #include "noise.glsl"
 
 void main() {
@@ -10,7 +14,7 @@ void main() {
 	ivec2 size = imageSize(uDetail);
 	if (texel.x >= size.x || texel.y >= size.y) return;
 
-    vec2 uv = (vec2(texel) + 0.5) / vec2(size);
+    vec2 uv = (vec2(texel) + 0.5) / vec2(size) + uWorldOffset;
     
     vec3 color = vec3(0.0);
     
