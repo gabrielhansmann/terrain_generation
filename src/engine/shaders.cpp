@@ -187,3 +187,38 @@ void ReloadPrograms(GLuint& gbufferProgram, GLuint& lightingProgram, GLuint& wat
 	lightingProgram = newLighting;
 	waterProgram = newWater;
 }
+
+void ReloadFlatPrograms(GLuint& gbufferProgram, GLuint& lightingProgram, GLuint& wireframeProgram, const std::string& defines) {
+	GLuint newGBuffer = LoadShadersWithDefines("shaders/planet/terrain_plane.vert", "shaders/planet/terrain_plane_gbuffer.frag", defines);
+	GLuint newLighting = LoadShadersWithDefines("shaders/fullscreen.vert", "shaders/lighting/lighting_plane.frag", defines);
+	GLuint newWireframe = LoadShadersWithDefines("shaders/planet/terrain_plane.vert", "shaders/planet/wireframe.frag", defines);
+
+	if (gbufferProgram)
+		glDeleteProgram(gbufferProgram);
+	if (lightingProgram)
+		glDeleteProgram(lightingProgram);
+	if (wireframeProgram)
+		glDeleteProgram(wireframeProgram);
+
+	gbufferProgram = newGBuffer;
+	lightingProgram = newLighting;
+	wireframeProgram = newWireframe;
+}
+
+void ReloadRunnerPrograms(GLuint& gbufferProgram, GLuint& lightingProgram, const std::string& defines) {
+	std::string runnerDefines = defines;
+	if (!runnerDefines.empty() && runnerDefines.back() != '\n')
+		runnerDefines += "\n";
+	runnerDefines += "#define RUNNER 1\n";
+
+	GLuint newGBuffer = LoadShadersWithDefines("shaders/planet/terrain_plane.vert", "shaders/planet/terrain_plane_gbuffer.frag", runnerDefines);
+	GLuint newLighting = LoadShadersWithDefines("shaders/fullscreen.vert", "shaders/lighting/lighting_plane.frag", runnerDefines);
+
+	if (gbufferProgram)
+		glDeleteProgram(gbufferProgram);
+	if (lightingProgram)
+		glDeleteProgram(lightingProgram);
+
+	gbufferProgram = newGBuffer;
+	lightingProgram = newLighting;
+}
