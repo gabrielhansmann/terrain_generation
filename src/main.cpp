@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 #include <vector>
 #include "planet/cube_sphere_mesh.h"
+#include "planet/terrain_mesh.h"
 #include "glm/matrix.hpp"
 #include "engine/shaders.h"
 #include "app/orbit_camera.h"
@@ -58,25 +59,36 @@ int main() {
 	GLuint vao;
 	glGenVertexArrays(1, &vao);
 	ShaderSettings shaderSettings;
-	GLuint progGBuffer = 0;
-	GLuint progLighting = 0;
-	GLuint progWater = 0;
+	GLuint progGBufferSphere = 0;
+	GLuint progLightingSphere = 0;
+	GLuint progWaterSphere = 0;
+	GLuint progGBufferFlat = 0;
+	GLuint progLightingFlat = 0;
+	GLuint progWireframeFlat = 0;
+	GLuint progGBufferRunner = 0;
+	GLuint progLightingRunner = 0;
 	std::string shaderDefines = ui.buildShaderDefines(shaderSettings);
-	ReloadPrograms(progGBuffer, progLighting, progWater, shaderDefines);
+	ReloadPrograms(progGBufferSphere, progLightingSphere, progWaterSphere, shaderDefines);
+	ReloadFlatPrograms(progGBufferFlat, progLightingFlat, progWireframeFlat, shaderDefines);
+	ReloadRunnerPrograms(progGBufferRunner, progLightingRunner, shaderDefines);
 
 	GLuint progDebugFace = LoadShaders("shaders/fullscreen.vert", "shaders/planet/debug_cubemap_face.frag");
-	GLuint progWireframe = LoadShadersWithDefines("shaders/planet/terrain.vert", "shaders/planet/wireframe.frag", shaderDefines);
+	GLuint progDebugHeightmap = LoadShaders("shaders/fullscreen.vert", "shaders/planet/debug_heightmap_2d.frag");
+	GLuint progWireframeSphere = LoadShadersWithDefines("shaders/planet/terrain.vert", "shaders/planet/wireframe.frag", shaderDefines);
 
-	// erosion pass: a generated float cubemap, height looked up by direction
-	ComputePass erosionPass(1024, 1024, "shaders/planet/erosion.comp", ComputePassTextureType::CubeMapGenerated, nullptr, shaderDefines);
+	// Sphere path: direction-addressed cubemap heightmap
+	ComputePass erosionPassSphere(1024, 1024, "shaders/planet/erosion.comp", ComputePassTextureType::CubeMapGenerated, nullptr, shaderDefines);
+	// Flat path: 2D heightmap for the plane mesh
+	ComputePass erosionPassFlat(1024, 1024, "shaders/planet/erosion_flat.comp", ComputePassTextureType::Texture2D, nullptr, shaderDefines);
 
-	// detail pass: static 2D noise, still sampled flat until the mesh goes spherical
+	// detail pass: static 2D noise; used by the flat-plane shading path
 	ComputePass detailPass(1024, 1024, "shaders/planet/detail.comp", ComputePassTextureType::Texture2D, nullptr, shaderDefines);
 
 	//	G-buffer
 	Framebuffer gbuffer(SCREEN_W, SCREEN_H, 4);
 
-	CubeSphereMesh terrainMesh(128); // quads per face
+	CubeSphereMesh sphereMesh(128); // quads per face
+	TerrainMesh flatMesh(256);      // quads per side
 	OrbitCamera camera;
 
 	// Dither noise for image iChannel2 (color += texture(..).xxx / 255.0).
@@ -108,6 +120,8 @@ int main() {
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, faceViewTex, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+	int lastProjectionMode = shaderSettings.projectionMode;
+
     // Render Loop
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -123,15 +137,57 @@ int main() {
 		}
 
 		float t = (float)glfwGetTime() + 3600.0f;
+		static double prevTime = glfwGetTime();
+		double nowTime = glfwGetTime();
+		float dt = (float)(nowTime - prevTime);
+		prevTime = nowTime;
+		if (dt > 0.1f) dt = 0.1f; // clamp so a stall doesn't teleport the runner
 		glfwGetFramebufferSize(window, &SCREEN_W, &SCREEN_H);
 		gbuffer.resize(SCREEN_W, SCREEN_H);
 
-		detailPass.dispatch();
-		erosionPass.dispatch();
+		const bool flatMode = shaderSettings.projectionMode == 1;
+		const bool runnerActive = flatMode && shaderSettings.endlessRunner;
+		if (shaderSettings.projectionMode != lastProjectionMode) {
+			if (flatMode)
+				erosionPassFlat.markDirty();
+			else
+				erosionPassSphere.markDirty();
+			lastProjectionMode = shaderSettings.projectionMode;
+		}
 
-		camera.zoom(scrollAccum);
+		// Camera + terrain scroll offset. Must run before the compute dispatch so
+		// the runner's uWorldOffset is current for this frame's heightmap.
+		if (runnerActive) {
+			auto keyDown = [&](int k) { return glfwGetKey(window, k) == GLFW_PRESS; };
+			camera.updateRunner(dt,
+				keyDown(GLFW_KEY_W), keyDown(GLFW_KEY_S),
+				keyDown(GLFW_KEY_D), keyDown(GLFW_KEY_A),
+				keyDown(GLFW_KEY_I), keyDown(GLFW_KEY_K),
+				keyDown(GLFW_KEY_J), keyDown(GLFW_KEY_L),
+				SCREEN_W, SCREEN_H);
+			glm::vec2 off = camera.runnerOffset();
+			erosionPassFlat.setWorldOffset(off.x, off.y);
+			detailPass.setWorldOffset(off.x, off.y);
+		} else if (flatMode) {
+			// Static flat terrain matches the historical implementation exactly.
+			erosionPassFlat.setWorldOffset(0.0f, 0.0f);
+			detailPass.setWorldOffset(0.0f, 0.0f);
+			camera.updateFlat(t, mouseX, mouseY, mouseDown, SCREEN_W, SCREEN_H, shaderSettings);
+		} else {
+			camera.zoom(scrollAccum);
+			camera.update(t, mouseX, mouseY, mouseDown, SCREEN_W, SCREEN_H);
+		}
 		scrollAccum = 0.0f;
-		camera.update(t, mouseX, mouseY, mouseDown, SCREEN_W, SCREEN_H);
+
+		detailPass.dispatch();
+		if (flatMode)
+			erosionPassFlat.dispatch();
+		else
+			erosionPassSphere.dispatch();
+
+		GLuint progGBuffer = runnerActive ? progGBufferRunner : (flatMode ? progGBufferFlat : progGBufferSphere);
+		GLuint progWireframe = flatMode ? progWireframeFlat : progWireframeSphere;
+		GLuint progLighting = runnerActive ? progLightingRunner : (flatMode ? progLightingFlat : progLightingSphere);
 
 		// Pass 1 - G-buffer: rasterize mesh + material 
 		gbuffer.bind();
@@ -143,9 +199,11 @@ int main() {
 		// all attachments to 0
 		glClearBufferfv(GL_COLOR, 3, skyDepth); // attachment 3 = gDepth
 		glEnable(GL_DEPTH_TEST);
-		// planet is a closed solid, triangles facing away from camera are never
-		// visible -> cull them to skip G-buffer frag work
-		glEnable(GL_CULL_FACE);
+		if (!flatMode) {
+			// planet is a closed solid, triangles facing away from camera are never
+			// visible -> cull them to skip G-buffer frag work
+			glEnable(GL_CULL_FACE);
+		}
 		glUseProgram(progGBuffer);
 		glUniform3f(glGetUniformLocation(progGBuffer, "iResolution"), (float)SCREEN_W, (float)SCREEN_H, 1.0f);
 		glUniform1f(glGetUniformLocation(progGBuffer, "iTime"), t);
@@ -154,10 +212,15 @@ int main() {
 		glm::mat4 vp = camera.viewProjMatrix();
 		glUniformMatrix4fv(glGetUniformLocation(progGBuffer, "uViewProj"), 1, GL_FALSE, &vp[0][0]);
 		glm::vec3 camPos = camera.position();
-		glUniform3fv(glGetUniformLocation(progGBuffer, "uCamPos"), 1, &camPos[0]);
+		if (!flatMode || runnerActive)
+			glUniform3fv(glGetUniformLocation(progGBuffer, "uCamPos"), 1, &camPos[0]);
 
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, erosionPass.texture());
+		if (flatMode) {
+			glBindTexture(GL_TEXTURE_2D, erosionPassFlat.texture());
+		} else {
+			glBindTexture(GL_TEXTURE_CUBE_MAP, erosionPassSphere.texture());
+		}
 		glUniform1i(glGetUniformLocation(progGBuffer, "iChannel0"), 0);
 
 		glActiveTexture(GL_TEXTURE1);
@@ -171,16 +234,20 @@ int main() {
 			1.0f, 1.0f, 1.0f,
 		};
 		glUniform3fv(glGetUniformLocation(progGBuffer, "iChannelResolution[0]"), 4, ichRes);
-		terrainMesh.draw(); // draw land first
+		if (flatMode)
+			flatMesh.draw();
+		else {
+			sphereMesh.draw();
 
-		// second pass into same G-Buffer: water shell. depth test still on
-		glUseProgram(progWater);
-		glUniformMatrix4fv(glGetUniformLocation(progWater, "uViewProj"), 1, GL_FALSE, &vp[0][0]);
-		glUniform3fv(glGetUniformLocation(progWater, "uCamPos"), 1, &camPos[0]);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, erosionPass.texture());
-		glUniform1i(glGetUniformLocation(progWater, "iChannel0"), 0);
-		terrainMesh.draw(); // same mesh, water.vert at PLANET_RADIUS
+			// water shell (sphere path only)
+			glUseProgram(progWaterSphere);
+			glUniformMatrix4fv(glGetUniformLocation(progWaterSphere, "uViewProj"), 1, GL_FALSE, &vp[0][0]);
+			glUniform3fv(glGetUniformLocation(progWaterSphere, "uCamPos"), 1, &camPos[0]);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_CUBE_MAP, erosionPassSphere.texture());
+			glUniform1i(glGetUniformLocation(progWaterSphere, "iChannel0"), 0);
+			sphereMesh.draw();
+		}
 		glDisable(GL_DEPTH_TEST);
 		glDisable(GL_CULL_FACE);
 		gbuffer.unbind();
@@ -197,10 +264,19 @@ int main() {
 			glm::mat4 vpWire = camera.viewProjMatrix();
 			glUniformMatrix4fv(glGetUniformLocation(progWireframe, "uViewProj"), 1, GL_FALSE, &vpWire[0][0]);
 			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_CUBE_MAP, erosionPass.texture());
-			glUniform1i(glGetUniformLocation(progWireframe, "iChannel0"), 0);
+			if (flatMode) {
+				glBindTexture(GL_TEXTURE_2D, erosionPassFlat.texture());
+				glUniform1i(glGetUniformLocation(progWireframe, "iChannel0"), 0);
+				glUniform3fv(glGetUniformLocation(progWireframe, "iChannelResolution[0]"), 4, ichRes);
+			} else {
+				glBindTexture(GL_TEXTURE_CUBE_MAP, erosionPassSphere.texture());
+				glUniform1i(glGetUniformLocation(progWireframe, "iChannel0"), 0);
+			}
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-			terrainMesh.draw();
+			if (flatMode)
+				flatMesh.draw();
+			else
+				sphereMesh.draw();
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		} else {
 		// Pass 2 - Lighting: reads G-buffer, runs BRDF + shadow + athmosphere -> screen
@@ -209,10 +285,12 @@ int main() {
 		glClear(GL_COLOR_BUFFER_BIT);
 		glUseProgram(progLighting);
 
-		glm::vec3 lightCamPos = camera.position();
-		glUniform3fv(glGetUniformLocation(progLighting, "uCamPos"), 1, &lightCamPos[0]);
-		glm::mat4 invVP = glm::inverse(vp);
-		glUniformMatrix4fv(glGetUniformLocation(progLighting, "uInvViewProj"), 1, GL_FALSE, &invVP[0][0]);
+		if (!flatMode || runnerActive) {
+			glm::vec3 lightCamPos = camera.position();
+			glUniform3fv(glGetUniformLocation(progLighting, "uCamPos"), 1, &lightCamPos[0]);
+			glm::mat4 invVP = glm::inverse(vp);
+			glUniformMatrix4fv(glGetUniformLocation(progLighting, "uInvViewProj"), 1, GL_FALSE, &invVP[0][0]);
+		}
 
 		glUniform3f(glGetUniformLocation(progLighting, "iResolution"), (float)SCREEN_W, (float)SCREEN_H, 1.0f);
 		glUniform1f(glGetUniformLocation(progLighting, "iTime"), t);
@@ -234,6 +312,12 @@ int main() {
 		glBindTexture(GL_TEXTURE_2D, gbuffer.texture(3));
 		glUniform1i(glGetUniformLocation(progLighting, "gDepth"), 3);
 
+		if (flatMode) {
+			glActiveTexture(GL_TEXTURE4);
+			glBindTexture(GL_TEXTURE_2D, erosionPassFlat.texture());
+			glUniform1i(glGetUniformLocation(progLighting, "iChannel0"), 4);
+		}
+
 		// dither
 		glActiveTexture(GL_TEXTURE5);
 		glBindTexture(GL_TEXTURE_2D, texDither);
@@ -245,27 +329,44 @@ int main() {
 		drawFullscreen();
 		}
 
-		// draw the chosen cubemap face into the debug panel target
-        glBindFramebuffer(GL_FRAMEBUFFER, faceViewFbo);
-        glViewport(0, 0, FACE_VIEW_SIZE, FACE_VIEW_SIZE);
-        glUseProgram(progDebugFace);
-        glUniform1i(glGetUniformLocation(progDebugFace, "uFace"), shaderSettings.debugCubeFace);
-        glUniform1i(glGetUniformLocation(progDebugFace, "uChannel"), shaderSettings.debugCubeChannel);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, erosionPass.texture());
-        glUniform1i(glGetUniformLocation(progDebugFace, "uCube"), 0);
-        drawFullscreen();
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		// Debug panel: cubemap face (sphere) or 2D heightmap (flat)
+		GLuint debugPreviewTex = faceViewTex;
+        if (flatMode) {
+			glBindFramebuffer(GL_FRAMEBUFFER, faceViewFbo);
+			glViewport(0, 0, FACE_VIEW_SIZE, FACE_VIEW_SIZE);
+			glUseProgram(progDebugHeightmap);
+			glUniform1i(glGetUniformLocation(progDebugHeightmap, "uChannel"), shaderSettings.debugCubeChannel);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, erosionPassFlat.texture());
+			glUniform1i(glGetUniformLocation(progDebugHeightmap, "uHeightmap"), 0);
+			drawFullscreen();
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		} else {
+			glBindFramebuffer(GL_FRAMEBUFFER, faceViewFbo);
+			glViewport(0, 0, FACE_VIEW_SIZE, FACE_VIEW_SIZE);
+			glUseProgram(progDebugFace);
+			glUniform1i(glGetUniformLocation(progDebugFace, "uFace"), shaderSettings.debugCubeFace);
+			glUniform1i(glGetUniformLocation(progDebugFace, "uChannel"), shaderSettings.debugCubeChannel);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_CUBE_MAP, erosionPassSphere.texture());
+			glUniform1i(glGetUniformLocation(progDebugFace, "uCube"), 0);
+			drawFullscreen();
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		}
 
 		ui.beginFrame();
-		bool shaderDirty = ui.renderOptions(shaderSettings, faceViewTex);
+		bool shaderDirty = ui.renderOptions(shaderSettings, debugPreviewTex);
 		ui.endFrame();
 
 		if (shaderDirty)
 			{
 				shaderDefines = ui.buildShaderDefines(shaderSettings);
-				ReloadPrograms(progGBuffer, progLighting, progWater, shaderDefines);
-				erosionPass.reloadProgram(shaderDefines);
+				ReloadPrograms(progGBufferSphere, progLightingSphere, progWaterSphere, shaderDefines);
+				ReloadFlatPrograms(progGBufferFlat, progLightingFlat, progWireframeFlat, shaderDefines);
+				ReloadRunnerPrograms(progGBufferRunner, progLightingRunner, shaderDefines);
+				progWireframeSphere = LoadShadersWithDefines("shaders/planet/terrain.vert", "shaders/planet/wireframe.frag", shaderDefines);
+				erosionPassSphere.reloadProgram(shaderDefines);
+				erosionPassFlat.reloadProgram(shaderDefines);
 				detailPass.reloadProgram(shaderDefines);
 			}
 
