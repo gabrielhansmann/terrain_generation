@@ -5,7 +5,7 @@
 #include "planet/terrain_mesh.h"
 #include "glm/matrix.hpp"
 #include "engine/shaders.h"
-#include "app/orbit_camera.h"
+#include "app/camera.h"
 #include "engine/perlin_noise.h"
 #include "engine/compute_pass.h"
 #include "engine/framebuffer.h"

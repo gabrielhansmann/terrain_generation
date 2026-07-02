@@ -1,4 +1,4 @@
-#include "orbit_camera.h"
+#include "camera.h"
 #include "app/ui.h"
 #include "glm/common.hpp"
 #include "glm/ext/matrix_clip_space.hpp"

@@ -42,7 +42,7 @@ add_executable(${PROJECT_NAME}
 	src/engine/compute_pass.cpp
 	src/engine/framebuffer.cpp
     src/app/ui.cpp
-	src/app/orbit_camera.cpp
+	src/app/camera.cpp
 	src/planet/cube_sphere_mesh.cpp
 	src/planet/terrain_mesh.cpp
 )
